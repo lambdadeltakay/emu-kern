@@ -17,4 +17,4 @@ jobs:
             components: rustfmt, clippy, rust-src
 
       - shell: bash
-        run: ./debug.sh thumbv4t-none-eabi
+        run: ./debug.sh x86_64-unknown-linux-gnu

@@ -13,7 +13,6 @@ jobs:
         with:
             toolchain: nightly
             override: true
-            target: armv4t-none-eabi
             components: rustfmt, clippy, rust-src
 
       - shell: bash
