@@ -1,0 +1,9 @@
+[package]
+name = "emurs_loader_gba"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+emurs_kernel = { path = "../../emurs_kernel", features = ["embedded"]}

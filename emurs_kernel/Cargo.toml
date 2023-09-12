@@ -1,0 +1,26 @@
+[package]
+name = "emurs_kernel"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = [
+    "derive",
+    "alloc",
+] }
+blake2 = { version = "0.10", default-features = false }
+spin = { version = "0.9", features = ["portable_atomic", "lock_api", "once"] }
+lock_api = "0.4"
+log = { version = "0.4", default-features = false }
+tinyvec = { version = "1.6", features = ["alloc", "serde"] }
+nalgebra = { version = "0.32", default-features = false, features = [
+    "libm",
+    "alloc",
+] }
+bitfield = "0.14"
+paste = "1.0"
+
+[features]
+embedded = []

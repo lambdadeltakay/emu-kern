@@ -1,0 +1,7 @@
+[target.thumbv4t-nintendo-gba]
+rustflags = [
+    "--cfg",
+    "portable_atomic_unsafe_assume_single_core",
+    "-C",
+    "link-arg=-Tconfig/thumbv4t-nintendo-gba.ld",
+]

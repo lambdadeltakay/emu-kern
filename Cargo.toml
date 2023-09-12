@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "emurs_kernel",
+    "loader/*"
+]
+
+[profile.release]
+strip = "symbols"
+lto = true
+overflow-checks = false
+opt-level = 3
