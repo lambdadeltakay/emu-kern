@@ -2,6 +2,20 @@ use crate::{driver::EmuRsDriver, error::EmuRsError};
 use alloc::{boxed::Box, collections::BTreeMap, format};
 use core::fmt::Display;
 
+pub enum EmuRsFileKind {
+    File,
+    Folder,
+    Device,
+    Mount,
+}
+
+pub struct EmuRsFile<'owner> {
+    pub path: EmuRsPath<'owner>,
+    pub kind: EmuRsFileKind,
+}
+
+impl<'owner> EmuRsFile<'owner> {}
+
 /// A path with `/` seperators
 pub struct EmuRsPath<'owner> {
     pub segments: &'owner [&'owner str],
@@ -66,9 +80,7 @@ impl<'owner> EmuRsVfs<'owner> {
             return **segment == ".." || **segment == ".";
         });
 
-        if result.is_some() {
-
-        }
+        if result.is_some() {}
 
         todo!();
 
@@ -83,6 +95,7 @@ impl<'owner> EmuRsVfs<'owner> {
 pub trait EmuRsFsBackEnd: EmuRsDriver {
     fn read(&self, file: EmuRsPath, buffer: &[u8], offset: usize);
     fn write(&self, file: EmuRsPath, buffer: &mut [u8], offset: usize);
+
     fn delete(&self, file: EmuRsPath);
     fn create(&self, file: EmuRsPath);
 }
