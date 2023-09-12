@@ -31,11 +31,11 @@ impl EmuRsDiskDriver for EmuRsDummyDiskDriver {
 }
 
 /// A disk that just points somewhere in memory. Useful for the GBA save slot
-pub struct EmuRsMemoryDisk {
-    location: NonNull<[u8]>,
+pub struct EmuRsMemoryDisk<'owner> {
+    location: &'owner mut [u8],
 }
 
-impl EmuRsDriver for EmuRsMemoryDisk {
+impl<'owner> EmuRsDriver for EmuRsMemoryDisk<'owner> {
     fn name(&self) -> &str {
         return "Memory Disk";
     }
@@ -47,19 +47,24 @@ impl EmuRsDriver for EmuRsMemoryDisk {
     fn setup_hardware(&self) {}
 }
 
-impl EmuRsMemoryDisk {
+impl<'owner> EmuRsMemoryDisk<'owner> {
     /// TODO: Perhaps rethink using NonNull
-    pub fn new(location: NonNull<[u8]>) -> Self {
+    pub fn new(location: &'owner mut [u8]) -> Self {
         return Self { location };
     }
 }
 
-impl EmuRsDiskDriver for EmuRsMemoryDisk {
+impl<'owner> EmuRsDiskDriver for EmuRsMemoryDisk<'owner> {
     fn write(&mut self, buffer: &[u8], offset: usize) {
-        unsafe { self.location.as_mut().copy_from_slice(buffer) }
+        let start = offset;
+        let end = buffer.len() + offset;
+
+        unsafe {
+            self.location[start..end].copy_from_slice(buffer);
+        }
     }
 
     fn read(&mut self, buffer: &mut [u8], offset: usize) {
-        buffer.copy_from_slice(unsafe { self.location.as_ref() });
+        buffer.copy_from_slice(unsafe { &self.location[offset..buffer.len() + offset] });
     }
 }

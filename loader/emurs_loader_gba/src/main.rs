@@ -7,7 +7,9 @@ extern crate alloc;
 
 mod video;
 
-use emurs_kernel::disk::EmuRsDummyDiskDriver;
+use core::ptr::NonNull;
+
+use emurs_kernel::disk::{EmuRsDummyDiskDriver, EmuRsMemoryDisk};
 use emurs_kernel::prelude::tinyvec::{array_vec, TinyVec};
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
@@ -52,7 +54,9 @@ pub extern "C" fn gba_loader() -> ! {
             }],
         },
         GbaVideo,
-        EmuRsDummyDiskDriver,
+        EmuRsMemoryDisk::new(unsafe {
+            core::slice::from_raw_parts_mut(0xe000000 as *mut u8, 0xffff)
+        }),
     );
 
     loop {}

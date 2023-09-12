@@ -12,4 +12,4 @@ opt-level = 1
 strip = "symbols"
 lto = true
 overflow-checks = false
-opt-level = "z"
+opt-level = 3

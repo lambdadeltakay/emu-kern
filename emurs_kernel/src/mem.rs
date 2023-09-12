@@ -135,6 +135,12 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
                     }
                 }
 
+                // TODO: Check if this is sane
+                if to_return.len() == 0
+                {
+                    to_return.push(entry.range);
+                }
+
                 return to_return;
             })
             .collect();

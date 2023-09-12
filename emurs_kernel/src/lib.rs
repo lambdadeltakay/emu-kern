@@ -6,6 +6,9 @@
 extern crate alloc;
 
 use crate::vfs::EmuRsVfs;
+use alloc::vec::Vec;
+use blake2::Blake2b512;
+use blake2::Digest;
 use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
@@ -38,9 +41,22 @@ pub fn emurs_main(
 
     video_driver.setup_hardware();
 
+    // Silly little test to stress what we have so far
     for x in 0..240 {
         for y in 0..160 {
-            video_driver.draw_pixel(EmuRsColorFormatRgb888::new(255, 0, 0), Point2::new(x, y));
+            let mut buffer = Vec::with_capacity(100);
+            disk_driver.read(&mut buffer, 0);
+
+            let mut hasher = Blake2b512::new();
+            hasher.update(buffer);
+            let hash = hasher.finalize();
+
+            video_driver.draw_pixel(
+                EmuRsColorFormatRgb888::new(hash[0], hash[1], hash[2]),
+                Point2::new(x, y),
+            );
+
+            disk_driver.write(&[x as u8, y as u8], x);
         }
     }
 }
