@@ -13,9 +13,8 @@ jobs:
         with:
             toolchain: nightly
             override: true
-            target: armv4t-none-eabi
+            target: x86_64-unknown-linux-gnu
             components: rustfmt, clippy, rust-src
 
-      - name: Build Debug
-        with:
-          command: ./debug.sh thumbv4t-none-eabi
+      - shell: bash
+        run: ./debug.sh thumbv4t-none-eabi
