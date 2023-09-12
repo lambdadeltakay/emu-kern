@@ -6,6 +6,7 @@
 extern crate alloc;
 
 use crate::vfs::EmuRsVfs;
+use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
 use tinyvec::ArrayVec;
@@ -21,9 +22,14 @@ pub mod prelude;
 pub mod vfs;
 pub mod video;
 
+/// The kernel entry to be used by the bootloader
+///
+/// Currently there is a restriction that no memory allocation may occur before the memory allocator is fed a memory table
+/// Later I will add a small space of memory inside of the allocator for pre setup allocations by the bootloader
 pub fn emurs_main(
     initial_memory_table: Option<EmuRsMemoryTable>,
     mut video_driver: impl EmuRsVideoDriver,
+    mut disk_driver: impl EmuRsDiskDriver,
 ) {
     #[cfg(feature = "embedded")]
     unsafe {
@@ -31,7 +37,7 @@ pub fn emurs_main(
     };
 
     video_driver.setup_hardware();
-    
+
     video_driver.draw_polyline(
         EmuRsColorFormatRgb888::new(255, 0, 0),
         true,

@@ -2,8 +2,8 @@ use alloc::string::String;
 use core::panic::PanicInfo;
 
 #[derive(Debug)]
-pub struct EmuRsError {
-    pub message: String,
+pub struct EmuRsError<'owner> {
+    pub message: &'owner str,
 }
 
 #[cfg(feature = "embedded")]

@@ -7,6 +7,8 @@ use paste::paste;
 use tinyvec::{ArrayVec, TinyVec};
 
 // Note that this is all based upon embedded-graphic's color implementation, but with more macro mess. Credit to them
+// The macros are such a mess that when macros are expanded, this file is around 3000 lines with common rgb and bgr formats implemented!
+// This isn't a problem unless you are compiling on a bad cpu
 
 /// Creates a new rgb color with its internal representation, and the width of the colors
 #[macro_export]
@@ -182,6 +184,8 @@ bgr_color!(u16, 6, 6, 6);
 bgr_color!(u32, 7, 7, 7);
 bgr_color!(u32, 8, 8, 8);
 
+/// The backend for a color format
+/// This allows color conversions and generic drawing functions
 pub trait EmuRsColor: Clone + Copy {
     type InternalRepresentation;
 
@@ -190,6 +194,7 @@ pub trait EmuRsColor: Clone + Copy {
     fn convert_bgr<COLOR: EmuRsBgrColor>(&self) -> COLOR;
 }
 
+/// The backend implementation for a RGB based color
 pub trait EmuRsRgbColor: EmuRsColor {
     const RMAX: usize;
     const GMAX: usize;
@@ -206,6 +211,7 @@ pub trait EmuRsRgbColor: EmuRsColor {
     fn blue(&self) -> u8;
 }
 
+/// The backend implementation for a BGR based color
 pub trait EmuRsBgrColor: EmuRsColor {
     const BMAX: usize;
     const GMAX: usize;
@@ -222,9 +228,65 @@ pub trait EmuRsBgrColor: EmuRsColor {
     fn red(&self) -> u8;
 }
 
+/// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
+    /// Draw a single pixel. The only method that does not have a software implementation
     fn draw_pixel(&mut self, color: impl EmuRsRgbColor, position: Point2<usize>);
+
+    /// Draw a line. This software implementation is rather slow at the moment
     fn draw_line(&mut self, color: impl EmuRsRgbColor, start: Point2<usize>, end: Point2<usize>) {
+        fn plot_line_low(
+            context: &mut (impl EmuRsVideoDriver + ?Sized),
+            start_pos: Point2<isize>,
+            end_pos: Point2<isize>,
+            color: impl EmuRsRgbColor,
+        ) {
+            let dx = end_pos.x - start_pos.x;
+            let mut dy = end_pos.y - start_pos.y;
+            let mut yi = 1;
+            if dy < 0 {
+                yi = -1;
+                dy = -dy;
+            }
+            let mut d = (2 * dy) - dx;
+            let mut y = start_pos.y;
+            for x in start_pos.x..=end_pos.x {
+                context.draw_pixel(color, Point2::new(x as usize, y as usize));
+                if d > 0 {
+                    y = y + yi;
+                    d = d + (2 * (dy - dx));
+                } else {
+                    d = d + 2 * dy;
+                }
+            }
+        }
+
+        fn plot_line_high(
+            context: &mut (impl EmuRsVideoDriver + ?Sized),
+            start_pos: Point2<isize>,
+            end_pos: Point2<isize>,
+            color: impl EmuRsRgbColor,
+        ) {
+            let mut dx = end_pos.x - start_pos.x;
+            let dy = end_pos.y - start_pos.y;
+            let mut xi = 1;
+            if dx < 0 {
+                xi = -1;
+                dx = -dx;
+            }
+            let mut d = (2 * dx) - dy;
+            let mut x = start_pos.x;
+            for y in start_pos.y..=end_pos.y {
+                context.draw_pixel(color, Point2::new(x as usize, y as usize));
+                if d > 0 {
+                    x = x + xi;
+                    d = d + (2 * (dx - dy));
+                } else {
+                    d = d + 2 * dx;
+                }
+            }
+        }
+
         let start_pos = Point2::new(start.x as isize, start.y as isize);
         let end_pos = Point2::new(end.x as isize, end.y as isize);
 
@@ -243,6 +305,11 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
         }
     }
 
+    /// Draw a polyline from a fixed array
+    ///
+    /// To use this easily just pass in a fixed array to [SVector]
+    ///
+    /// TODO: I might remove the fixed array restriction but I would like to keep this compile time optimizable and without any allocation
     fn draw_polyline<const POINT_COUNT: usize>(
         &mut self,
         color: impl EmuRsRgbColor,
@@ -280,8 +347,9 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     }
 }
 
-/// Helper functions
-
+/// Convert a color channel to some kind of other color channel
+/// FIXME: The math here needs to be made without floats
+/// FIXME: The math here does not work at all.
 #[inline]
 fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     if to == from {
@@ -291,60 +359,7 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     return (value as f32).scale(to as f32 / from as f32).round() as u8;
 }
 
-#[inline]
-fn plot_line_low(
-    context: &mut (impl EmuRsVideoDriver + ?Sized),
-    start_pos: Point2<isize>,
-    end_pos: Point2<isize>,
-    color: impl EmuRsRgbColor,
-) {
-    let dx = end_pos.x - start_pos.x;
-    let mut dy = end_pos.y - start_pos.y;
-    let mut yi = 1;
-    if dy < 0 {
-        yi = -1;
-        dy = -dy;
-    }
-    let mut d = (2 * dy) - dx;
-    let mut y = start_pos.y;
-    for x in start_pos.x..=end_pos.x {
-        context.draw_pixel(color, Point2::new(x as usize, y as usize));
-        if d > 0 {
-            y = y + yi;
-            d = d + (2 * (dy - dx));
-        } else {
-            d = d + 2 * dy;
-        }
-    }
-}
-
-#[inline]
-fn plot_line_high(
-    context: &mut (impl EmuRsVideoDriver + ?Sized),
-    start_pos: Point2<isize>,
-    end_pos: Point2<isize>,
-    color: impl EmuRsRgbColor,
-) {
-    let mut dx = end_pos.x - start_pos.x;
-    let dy = end_pos.y - start_pos.y;
-    let mut xi = 1;
-    if dx < 0 {
-        xi = -1;
-        dx = -dx;
-    }
-    let mut d = (2 * dx) - dy;
-    let mut x = start_pos.x;
-    for y in start_pos.y..=end_pos.y {
-        context.draw_pixel(color, Point2::new(x as usize, y as usize));
-        if d > 0 {
-            x = x + xi;
-            d = d + (2 * (dx - dy));
-        } else {
-            d = d + 2 * dx;
-        }
-    }
-}
-
+/// A dummy driver, for devices that have no displays
 pub struct EmuRsDummyVideoDriver;
 
 impl EmuRsDriver for EmuRsDummyVideoDriver {

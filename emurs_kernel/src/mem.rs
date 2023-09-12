@@ -6,13 +6,19 @@ use core::{
 use lock_api::{Mutex, RawMutex};
 use tinyvec::ArrayVec;
 
+/// FIXME: We need a way for memory tables to be reloading safely
+
+/// The number of slabs the allocator can hold at a time before it panics
 const SLAB_COUNT: usize = size_of::<usize>() * 2;
 
+/// The global allocator for the operating system
 #[cfg(feature = "embedded")]
 #[global_allocator]
 pub static mut EMURS_GLOBAL_MEMORY_ALLOCATOR: EmuRsAllocator<spin::mutex::Mutex<()>> =
     EmuRsAllocator::<spin::Mutex<()>>::new();
 
+/// Type representing a memory range
+/// This was used instead of [RangeInclusive] due to it not supporting [Copy] 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct EmuRsMemoryRange {
     pub first: usize,
@@ -29,6 +35,9 @@ impl EmuRsMemoryRange {
     }
 }
 
+/// The permissions that a memory block has.
+/// 
+/// This will eventually merge with VFS permissions
 #[derive(Debug, Default)]
 pub struct EmuRsMemoryPermission {
     pub read: bool,
@@ -36,6 +45,9 @@ pub struct EmuRsMemoryPermission {
     pub execute: bool,
 }
 
+/// A brief description of the memory
+/// 
+/// Currently ignored
 #[derive(Debug, Default)]
 pub enum EmuRsMemoryKind {
     #[default]
@@ -44,6 +56,7 @@ pub enum EmuRsMemoryKind {
     KernelStack,
 }
 
+/// A entry in the memory table used to determine where to allocate memory
 #[derive(Debug, Default)]
 pub struct EmuRsMemoryTableEntry {
     pub permissions: EmuRsMemoryPermission,
@@ -51,18 +64,20 @@ pub struct EmuRsMemoryTableEntry {
     pub kind: EmuRsMemoryKind,
 }
 
+/// A memory table that must be passed in by the bootloader for allocation to occur
 #[derive(Debug, Default)]
 pub struct EmuRsMemoryTable {
     pub entries: ArrayVec<[EmuRsMemoryTableEntry; 10]>,
 }
 
+/// A entry in the internal allocation tracking table
 #[derive(Debug, Default, Clone, Copy)]
-pub struct EmuRsAllocatorSlab {
+struct EmuRsAllocatorSlab {
     pub coverage: EmuRsMemoryRange,
 }
 
+/// Implements a global allocator for the operating system
 pub struct EmuRsAllocator<MUTEX: RawMutex> {
-    // For now this is a Oncecell until we figure out something better to do
     memory_table: Mutex<MUTEX, Option<EmuRsMemoryTable>>,
     slabs: Mutex<MUTEX, ArrayVec<[EmuRsAllocatorSlab; SLAB_COUNT]>>,
 }
@@ -71,7 +86,7 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
     pub const fn new() -> Self {
         return Self {
             memory_table: Mutex::new(None),
-            // This is a extremely fucked up hack to make up for rust consts being really fucked up
+            // This is a extremely messed up hack to make up for rust consts being really messed up
             slabs: Mutex::new(ArrayVec::from_array_empty(
                 [EmuRsAllocatorSlab {
                     coverage: EmuRsMemoryRange { first: 0, last: 0 },
@@ -80,10 +95,15 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
         };
     }
 
+    /// Set the memory table. 
+    /// 
+    /// WARNING: It is completely and totally undefined to do this more than once, but I'm not locking it behind a OnceCell just yet
     pub unsafe fn set_memory_table(&mut self, table: EmuRsMemoryTable) {
         *self.memory_table.get_mut() = Some(table);
     }
 
+    /// Get the ranges of free memory according to the memory and slab table
+    /// This may seem slow and complicated but so far the compiler more or less wipes away every iterator
     pub fn get_free_memory_ranges(&self) -> ArrayVec<[EmuRsMemoryRange; 128]> {
         return self
             .memory_table
@@ -93,7 +113,7 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
             .entries
             .iter()
             .flat_map(|entry| {
-                // Gotta make sure this doesn't overflow lmfao
+                // Gotta make sure this doesn't overflow
                 let mut to_return = ArrayVec::<[EmuRsMemoryRange; SLAB_COUNT]>::new();
 
                 // Go through every slab
@@ -120,6 +140,9 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
             .collect();
     }
 
+    /// Get a memory block that satifies the [Layout] passed in
+    /// 
+    /// FIXME: Currently ignores requested alignment.
     pub fn get_free_memory_block(&self, layout: Layout) -> EmuRsMemoryRange {
         return self
             .get_free_memory_ranges()
