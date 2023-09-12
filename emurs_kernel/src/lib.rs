@@ -23,9 +23,9 @@ pub mod drivers;
 pub mod error;
 pub mod mem;
 pub mod prelude;
+pub mod program;
 pub mod vfs;
 pub mod video;
-pub mod program;
 
 /// The kernel entry to be used by the bootloader
 ///
@@ -47,18 +47,27 @@ pub fn emurs_main(
     for x in 0..240 {
         for y in 0..160 {
             let mut buffer = Vec::with_capacity(100);
-            disk_driver.read(&mut buffer, 0);
+            disk_driver.read(&mut buffer, x as usize + y as usize);
 
             let mut hasher = Blake2b512::new();
             hasher.update(buffer);
             let hash = hasher.finalize();
 
-            video_driver.draw_pixel(
-                EmuRsColorFormatRgb888::new(hash[0], hash[1], hash[2]),
-                Point2::new(x, y),
+            video_driver.draw_polyline(
+                &hash
+                    .iter()
+                    .map(|block| {
+                        return Point2::new(
+                            (*block.min(&240)) as usize,
+                            (*block.min(&160)) as usize,
+                        );
+                    })
+                    .collect::<Vec<_>>(),
+                EmuRsColorFormatRgb888::new(0xff, x, y),
+                true,
             );
 
-            disk_driver.write(&[x as u8, y as u8], x);
+            disk_driver.write(&[x as u8, y as u8], x as usize);
         }
     }
 }

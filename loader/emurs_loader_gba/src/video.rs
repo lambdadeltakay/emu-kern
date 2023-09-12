@@ -43,6 +43,10 @@ impl EmuRsDriver for GbaVideo {
         unsafe { DISPCNT.as_mut().unwrap().set_forced_blank(false) };
         unsafe { DISPCNT.as_mut().unwrap().set_display_background_2(true) };
     }
+
+    fn get_preference(&self) -> EmuRsDriverPreference {
+        return EmuRsDriverPreference::Preferred;
+    }
 }
 
 impl EmuRsVideoDriver for GbaVideo {

@@ -6,9 +6,18 @@ use crate::device::EmuRsDevice;
 pub trait EmuRsDriver {
     /// The name of the driver
     fn name(&self) -> &str;
-    /// The devices this driver would like to claim. 
+    /// How likely this is to be used on this system
+    fn get_preference(&self) -> EmuRsDriverPreference;
+    /// The devices this driver would like to claim.
     /// Currently completely unimplemented
     fn get_claimed(&self) -> EmuRsDevice;
     /// Initialize the claimed hardware
     fn setup_hardware(&self);
+}
+
+pub enum EmuRsDriverPreference {
+    Forbidden,
+    Fallback,
+    Suboptimal,
+    Preferred,
 }

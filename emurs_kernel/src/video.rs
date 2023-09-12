@@ -1,6 +1,6 @@
 use core::mem::size_of;
 
-use crate::driver::EmuRsDriver;
+use crate::driver::{EmuRsDriver, EmuRsDriverPreference};
 use nalgebra::SimdComplexField;
 use nalgebra::{ComplexField, SVector};
 use nalgebra::{Point2, Vector2};
@@ -460,6 +460,10 @@ impl EmuRsDriver for EmuRsDummyVideoDriver {
     }
 
     fn setup_hardware(&self) {}
+
+    fn get_preference(&self) -> EmuRsDriverPreference {
+        return EmuRsDriverPreference::Fallback;
+    }
 }
 
 impl EmuRsVideoDriver for EmuRsDummyVideoDriver {

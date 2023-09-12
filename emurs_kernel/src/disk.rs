@@ -1,6 +1,7 @@
 use crate::device::EmuRsDevice;
 use crate::driver::EmuRsDriver;
 use core::ptr::NonNull;
+use crate::driver::EmuRsDriverPreference;
 
 /// The disk implementation for filesystems to write and read
 pub trait EmuRsDiskDriver: EmuRsDriver {
@@ -23,6 +24,10 @@ impl EmuRsDriver for EmuRsDummyDiskDriver {
     }
 
     fn setup_hardware(&self) {}
+
+    fn get_preference(&self) -> EmuRsDriverPreference {
+        return EmuRsDriverPreference::Fallback;
+    }
 }
 
 impl EmuRsDiskDriver for EmuRsDummyDiskDriver {
