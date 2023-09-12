@@ -34,7 +34,7 @@ impl EmuRsDriver for GbaVideo {
 }
 
 impl EmuRsVideoDriver for GbaVideo {
-    fn draw_pixel(&mut self, color: impl EmuRsRgbColor, position: Point2<usize>) {
+    fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>) {
         unsafe {
             (0x6000000 as *mut u16)
                 .write_volatile(color.convert_rgb::<EmuRsColorFormatRgb565>().raw());

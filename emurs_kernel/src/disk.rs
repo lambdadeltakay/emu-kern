@@ -5,9 +5,9 @@ use core::ptr::NonNull;
 /// The disk implementation for filesystems to write and read
 pub trait EmuRsDiskDriver: EmuRsDriver {
     /// TODO: Allow failure
-    fn read(&self, buffer: &[u8], offset: usize);
+    fn write(&mut self, buffer: &[u8], offset: usize);
     /// TODO: Allow failure
-    fn write(&self, buffer: &mut [u8], offset: usize);
+    fn read(&mut self, buffer: &mut [u8], offset: usize);
 }
 
 /// A dummy driver
@@ -26,8 +26,8 @@ impl EmuRsDriver for EmuRsDummyDiskDriver {
 }
 
 impl EmuRsDiskDriver for EmuRsDummyDiskDriver {
-    fn read(&self, buffer: &[u8], offset: usize) {}
-    fn write(&self, buffer: &mut [u8], offset: usize) {}
+    fn write(&mut self, buffer: &[u8], offset: usize) {}
+    fn read(&mut self, buffer: &mut [u8], offset: usize) {}
 }
 
 /// A disk that just points somewhere in memory. Useful for the GBA save slot
@@ -55,11 +55,11 @@ impl EmuRsMemoryDisk {
 }
 
 impl EmuRsDiskDriver for EmuRsMemoryDisk {
-    fn read(&self, buffer: &[u8], offset: usize) {
+    fn write(&mut self, buffer: &[u8], offset: usize) {
         unsafe { self.location.as_mut().copy_from_slice(buffer) }
     }
 
-    fn write(&self, buffer: &mut [u8], offset: usize) {
+    fn read(&mut self, buffer: &mut [u8], offset: usize) {
         buffer.copy_from_slice(unsafe { self.location.as_ref() });
     }
 }

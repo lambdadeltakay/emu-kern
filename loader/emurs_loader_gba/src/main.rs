@@ -11,6 +11,7 @@ mod video;
 use emurs_kernel::prelude::tinyvec::{array_vec, TinyVec};
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
+use emurs_kernel::disk::EmuRsDummyDiskDriver;
 
 #[naked]
 #[no_mangle]
@@ -40,7 +41,7 @@ unsafe extern "C" fn _start() -> ! {
 #[no_mangle]
 pub extern "C" fn gba_loader() -> ! {
     emurs_main(
-        Some(EmuRsMemoryTable {
+        EmuRsMemoryTable {
             entries: array_vec![EmuRsMemoryTableEntry {
                 permissions: EmuRsMemoryPermission {
                     read: true,
@@ -50,8 +51,8 @@ pub extern "C" fn gba_loader() -> ! {
                 range: EmuRsMemoryRange::new(0x2000000, 0x203ffff),
                 kind: EmuRsMemoryKind::Work
             }],
-        }),
-        GbaVideo,
+        },
+        GbaVideo, EmuRsDummyDiskDriver
     );
 
     loop {}

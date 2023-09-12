@@ -27,21 +27,21 @@ pub mod video;
 /// Currently there is a restriction that no memory allocation may occur before the memory allocator is fed a memory table
 /// Later I will add a small space of memory inside of the allocator for pre setup allocations by the bootloader
 pub fn emurs_main(
-    initial_memory_table: Option<EmuRsMemoryTable>,
+    initial_memory_table: EmuRsMemoryTable,
     mut video_driver: impl EmuRsVideoDriver,
     mut disk_driver: impl EmuRsDiskDriver,
 ) {
     #[cfg(feature = "embedded")]
     unsafe {
-        crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.set_memory_table(initial_memory_table.unwrap())
+        crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.set_memory_table(initial_memory_table)
     };
 
     video_driver.setup_hardware();
 
     video_driver.draw_polyline(
+        &[Point2::new(0, 0), Point2::new(10, 10)],
         EmuRsColorFormatRgb888::new(255, 0, 0),
-        true,
-        SVector::from([Point2::new(0, 0), Point2::new(10, 10)]),
+        true   
     );
 
     let vfs = EmuRsVfs::default();

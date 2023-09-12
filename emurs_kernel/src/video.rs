@@ -10,12 +10,15 @@ use tinyvec::{ArrayVec, TinyVec};
 // The macros are such a mess that when macros are expanded, this file is around 3000 lines with common rgb and bgr formats implemented!
 // This isn't a problem unless you are compiling on a bad cpu
 
+// TODO: Make some kind of solution for paletted displays
+
 /// Creates a new rgb color with its internal representation, and the width of the colors
 #[macro_export]
 macro_rules! rgb_color {
     ($internal_representation:ty, $r:expr, $g:expr, $b:expr) => {
         paste! {
             #[derive(Clone, Copy, Debug, Default)]
+            #[repr(transparent)]
             pub struct [<EmuRsColorFormatRgb $r $g $b>] {
                 pub data: <Self as EmuRsColor>::InternalRepresentation,
             }
@@ -42,6 +45,12 @@ macro_rules! rgb_color {
 
                     return COLOR::new(blue, green, red);
                 }
+                
+                fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
+                {
+                    todo!()
+                }
+
             }
 
             impl EmuRsRgbColor for [<EmuRsColorFormatRgb $r $g $b>] {
@@ -91,6 +100,7 @@ macro_rules! bgr_color {
     ($internal_representation:ty, $b:expr, $g:expr, $r:expr) => {
         paste! {
             #[derive(Clone, Copy, Debug, Default)]
+            #[repr(transparent)]
             pub struct [<EmuRsColorFormatBgr $b $g $r>] {
                 pub data: <Self as EmuRsColor>::InternalRepresentation,
             }
@@ -116,6 +126,11 @@ macro_rules! bgr_color {
                     let red = convert_channel(self.red(), Self::RMAX, COLOR::RMAX);
 
                     return COLOR::new(blue, green, red);
+                }
+                
+                fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
+                {
+                    todo!()
                 }
             }
 
@@ -162,6 +177,61 @@ macro_rules! bgr_color {
     };
 }
 
+#[macro_export]
+macro_rules! grey_color {
+    ($internal_representation:ty, $l:expr) => {
+        paste! {
+            #[derive(Clone, Copy, Debug, Default)]
+            #[repr(transparent)]
+            pub struct [<EmuRsColorFormatGrey $l>] {
+                pub data: <Self as EmuRsColor>::InternalRepresentation,
+            }
+
+            impl EmuRsColor for [<EmuRsColorFormatGrey $l>]{
+                type InternalRepresentation = $internal_representation;
+
+                fn raw(&self) -> Self::InternalRepresentation {
+                    return self.data;
+                }
+
+                fn convert_rgb<COLOR: EmuRsRgbColor>(&self) -> COLOR {
+                    todo!()
+                }
+
+                fn convert_bgr<COLOR: EmuRsBgrColor>(&self) -> COLOR {
+                    todo!()
+                }
+                
+                fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
+                {
+                    todo!()
+                }
+            }
+
+            impl EmuRsGreyColor for [<EmuRsColorFormatGrey $l>] {
+                const MAX: usize = 2_usize.pow($l);
+                const MASK: usize = (Self::MAX - 1);
+
+                fn new(luma: u8) -> Self
+                where
+                    Self: Sized,
+                {
+                    debug_assert!(luma as usize <= Self::MAX);
+                    debug_assert!($l <= size_of::<Self::InternalRepresentation>());
+
+                    return Self {
+                        data: $l as Self::InternalRepresentation
+                    };
+                }
+
+                fn luma(&self) -> u8 {
+                    return self.data as u8
+                }
+            }
+        }
+    };
+}
+
 rgb_color!(u8, 1, 1, 1);
 rgb_color!(u8, 2, 2, 2);
 rgb_color!(u8, 3, 3, 2);
@@ -169,7 +239,7 @@ rgb_color!(u16, 3, 3, 3);
 rgb_color!(u16, 4, 4, 4);
 rgb_color!(u16, 5, 5, 5);
 rgb_color!(u16, 5, 6, 5);
-rgb_color!(u16, 6, 6, 6);
+rgb_color!(u32, 6, 6, 6);
 rgb_color!(u32, 7, 7, 7);
 rgb_color!(u32, 8, 8, 8);
 
@@ -180,9 +250,14 @@ bgr_color!(u16, 3, 3, 3);
 bgr_color!(u16, 4, 4, 4);
 bgr_color!(u16, 5, 5, 5);
 bgr_color!(u16, 5, 6, 5);
-bgr_color!(u16, 6, 6, 6);
+bgr_color!(u32, 6, 6, 6);
 bgr_color!(u32, 7, 7, 7);
 bgr_color!(u32, 8, 8, 8);
+
+grey_color!(u8, 1);
+grey_color!(u8, 2);
+grey_color!(u8, 4);
+grey_color!(u8, 8);
 
 /// The backend for a color format
 /// This allows color conversions and generic drawing functions
@@ -192,6 +267,7 @@ pub trait EmuRsColor: Clone + Copy {
     fn raw(&self) -> Self::InternalRepresentation;
     fn convert_rgb<COLOR: EmuRsRgbColor>(&self) -> COLOR;
     fn convert_bgr<COLOR: EmuRsBgrColor>(&self) -> COLOR;
+    fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR;
 }
 
 /// The backend implementation for a RGB based color
@@ -228,18 +304,29 @@ pub trait EmuRsBgrColor: EmuRsColor {
     fn red(&self) -> u8;
 }
 
+pub trait EmuRsGreyColor: EmuRsColor
+{
+    const MASK: usize;
+    const MAX: usize;
+    
+    fn new(luma: u8) -> Self
+    where
+        Self: Sized;
+    fn luma(&self) -> u8;
+}
+
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a single pixel. The only method that does not have a software implementation
-    fn draw_pixel(&mut self, color: impl EmuRsRgbColor, position: Point2<usize>);
+    fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>);
 
     /// Draw a line. This software implementation is rather slow at the moment
-    fn draw_line(&mut self, color: impl EmuRsRgbColor, start: Point2<usize>, end: Point2<usize>) {
+    fn draw_line(&mut self, color: impl EmuRsColor, start: Point2<usize>, end: Point2<usize>) {
         fn plot_line_low(
             context: &mut (impl EmuRsVideoDriver + ?Sized),
             start_pos: Point2<isize>,
             end_pos: Point2<isize>,
-            color: impl EmuRsRgbColor,
+            color: impl EmuRsColor,
         ) {
             let dx = end_pos.x - start_pos.x;
             let mut dy = end_pos.y - start_pos.y;
@@ -265,7 +352,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
             context: &mut (impl EmuRsVideoDriver + ?Sized),
             start_pos: Point2<isize>,
             end_pos: Point2<isize>,
-            color: impl EmuRsRgbColor,
+            color: impl EmuRsColor,
         ) {
             let mut dx = end_pos.x - start_pos.x;
             let dy = end_pos.y - start_pos.y;
@@ -309,12 +396,11 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     ///
     /// To use this easily just pass in a fixed array to [SVector]
     ///
-    /// TODO: I might remove the fixed array restriction but I would like to keep this compile time optimizable and without any allocation
-    fn draw_polyline<const POINT_COUNT: usize>(
+    fn draw_polyline(
         &mut self,
-        color: impl EmuRsRgbColor,
+        points: &[Point2<usize>],
+        color: impl EmuRsColor,
         is_closed: bool,
-        points: SVector<Point2<usize>, POINT_COUNT>,
     ) {
         // Handle easily optimizable functions
         match points.len() {
@@ -359,6 +445,11 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     return (value as f32).scale(to as f32 / from as f32).round() as u8;
 }
 
+fn luma(r: u8, g: u8, b: u8) -> u8
+{
+    return (0.299 * (r as f32) + 0.587 * (g as f32) + 0.144 * (b as f32)) as u8;
+}
+
 /// A dummy driver, for devices that have no displays
 pub struct EmuRsDummyVideoDriver;
 
@@ -375,5 +466,5 @@ impl EmuRsDriver for EmuRsDummyVideoDriver {
 }
 
 impl EmuRsVideoDriver for EmuRsDummyVideoDriver {
-    fn draw_pixel(&mut self, color: impl EmuRsRgbColor, position: Point2<usize>) {}
+    fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>) {}
 }
