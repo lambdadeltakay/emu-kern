@@ -25,6 +25,7 @@ pub mod mem;
 pub mod prelude;
 pub mod vfs;
 pub mod video;
+pub mod program;
 
 /// The kernel entry to be used by the bootloader
 ///

@@ -9,7 +9,9 @@ mod video;
 
 use core::ptr::NonNull;
 
-use emurs_kernel::disk::{EmuRsDummyDiskDriver, EmuRsMemoryDisk};
+use emurs_kernel::device::EmuRsDevice;
+use emurs_kernel::disk::{EmuRsDiskDriver, EmuRsDummyDiskDriver, EmuRsMemoryDisk};
+use emurs_kernel::driver::EmuRsDriver;
 use emurs_kernel::prelude::tinyvec::{array_vec, TinyVec};
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
@@ -52,10 +54,28 @@ pub extern "C" fn gba_loader() -> ! {
             kind: EmuRsMemoryKind::Work,
         }],
         GbaVideo,
-        EmuRsMemoryDisk::new(unsafe {
-            core::slice::from_raw_parts_mut(0xe000000 as *mut u8, 0xffff)
-        }),
+        GbaSram,
     );
 
     loop {}
+}
+
+pub struct GbaSram;
+
+impl EmuRsDriver for GbaSram {
+    fn name(&self) -> &str {
+        return "Game Boy Advance SRAM";
+    }
+
+    fn get_claimed(&self) -> EmuRsDevice {
+        todo!()
+    }
+
+    fn setup_hardware(&self) {}
+}
+
+impl EmuRsMemoryDisk for GbaSram {
+    fn get_memory(&self) -> &mut [u8] {
+        return unsafe { core::slice::from_raw_parts_mut(0xe000000 as *mut u8, 0xffff) };
+    }
 }

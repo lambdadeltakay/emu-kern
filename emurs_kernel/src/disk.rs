@@ -15,7 +15,7 @@ pub struct EmuRsDummyDiskDriver;
 
 impl EmuRsDriver for EmuRsDummyDiskDriver {
     fn name(&self) -> &str {
-        return "Dummy Disk Driver";
+        return "Dummy Disk";
     }
 
     fn get_claimed(&self) -> EmuRsDevice {
@@ -31,38 +31,19 @@ impl EmuRsDiskDriver for EmuRsDummyDiskDriver {
 }
 
 /// A disk that just points somewhere in memory. Useful for the GBA save slot
-pub struct EmuRsMemoryDisk<'owner> {
-    location: &'owner mut [u8],
+pub trait EmuRsMemoryDisk {
+    fn get_memory(&self) -> &mut [u8];
 }
 
-impl<'owner> EmuRsDriver for EmuRsMemoryDisk<'owner> {
-    fn name(&self) -> &str {
-        return "Memory Disk";
-    }
-
-    fn get_claimed(&self) -> EmuRsDevice {
-        todo!()
-    }
-
-    fn setup_hardware(&self) {}
-}
-
-impl<'owner> EmuRsMemoryDisk<'owner> {
-    /// TODO: Perhaps rethink using NonNull
-    pub fn new(location: &'owner mut [u8]) -> Self {
-        return Self { location };
-    }
-}
-
-impl<'owner> EmuRsDiskDriver for EmuRsMemoryDisk<'owner> {
+impl<'owner, T: EmuRsMemoryDisk + EmuRsDriver> EmuRsDiskDriver for T {
     fn write(&mut self, buffer: &[u8], offset: usize) {
         let start = offset;
         let end = buffer.len() + offset;
 
-        self.location[start..end].copy_from_slice(buffer);
+        self.get_memory()[start..end].copy_from_slice(buffer);
     }
 
     fn read(&mut self, buffer: &mut [u8], offset: usize) {
-        buffer.copy_from_slice(&self.location[offset..buffer.len() + offset]);
+        buffer.copy_from_slice(&self.get_memory()[offset..buffer.len() + offset]);
     }
 }
