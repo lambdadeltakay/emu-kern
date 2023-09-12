@@ -12,6 +12,7 @@ use blake2::Digest;
 use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
+use prelude::EmuRsMemoryTableEntry;
 use tinyvec::ArrayVec;
 use video::{EmuRsColorFormatRgb888, EmuRsRgbColor, EmuRsVideoDriver};
 
@@ -30,13 +31,13 @@ pub mod video;
 /// Currently there is a restriction that no memory allocation may occur before the memory allocator is fed a memory table
 /// Later I will add a small space of memory inside of the allocator for pre setup allocations by the bootloader
 pub fn emurs_main(
-    initial_memory_table: EmuRsMemoryTable,
+    memory_table_entries: &[EmuRsMemoryTableEntry],
     mut video_driver: impl EmuRsVideoDriver,
     mut disk_driver: impl EmuRsDiskDriver,
 ) {
     #[cfg(feature = "embedded")]
     unsafe {
-        crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.set_memory_table(initial_memory_table)
+        crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.add_memory_table_entries(memory_table_entries)
     };
 
     video_driver.setup_hardware();

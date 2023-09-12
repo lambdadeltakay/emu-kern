@@ -20,20 +20,18 @@ pub fn main() {
     let mut buffer = [0_u8; 1000];
 
     emurs_main(
-        EmuRsMemoryTable {
-            entries: array_vec![EmuRsMemoryTableEntry {
-                permissions: EmuRsMemoryPermission {
-                    read: true,
-                    write: true,
-                    execute: false
-                },
-                range: EmuRsMemoryRange::new(
-                    buffer.as_mut_ptr() as usize,
-                    buffer.as_mut_ptr() as usize + buffer.len()
-                ),
-                kind: EmuRsMemoryKind::Work
-            }],
-        },
+        &[EmuRsMemoryTableEntry {
+            permissions: EmuRsMemoryPermission {
+                read: true,
+                write: true,
+                execute: false,
+            },
+            range: EmuRsMemoryRange::new(
+                buffer.as_mut_ptr() as usize,
+                buffer.as_mut_ptr() as usize + buffer.len(),
+            ),
+            kind: EmuRsMemoryKind::Work,
+        }],
         EmuRsDummyVideoDriver,
         EmuRsDummyDiskDriver,
     );

@@ -18,16 +18,26 @@ pub static mut EMURS_GLOBAL_MEMORY_ALLOCATOR: EmuRsAllocator<spin::mutex::Mutex<
     EmuRsAllocator::<spin::Mutex<()>>::new();
 
 /// Type representing a memory range
-/// This was used instead of [RangeInclusive] due to it not supporting [Copy] 
-#[derive(Debug, Default, Copy, Clone)]
+/// This was used instead of [RangeInclusive] due to it not supporting [Copy]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct EmuRsMemoryRange {
     pub first: usize,
     pub last: usize,
 }
 
 impl EmuRsMemoryRange {
-    pub fn new(first: usize, last: usize) -> Self {
+    pub const fn new(first: usize, last: usize) -> Self {
         return Self { first, last };
+    }
+
+    /// Checks if a range is inside or equal to this one
+    pub fn contains_range(&self, range: EmuRsMemoryRange) -> bool {
+        return range == *self || range.first >= self.first && range.last <= self.last;
+    }
+
+    /// Checks if this range is overlapping
+    pub fn overlaps_range(&self, range: EmuRsMemoryRange) -> bool {
+        return range == *self || range.first <= self.last && self.first <= range.last;
     }
 
     pub fn range(&self) -> RangeInclusive<usize> {
@@ -36,9 +46,9 @@ impl EmuRsMemoryRange {
 }
 
 /// The permissions that a memory block has.
-/// 
+///
 /// This will eventually merge with VFS permissions
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct EmuRsMemoryPermission {
     pub read: bool,
     pub write: bool,
@@ -46,9 +56,9 @@ pub struct EmuRsMemoryPermission {
 }
 
 /// A brief description of the memory
-/// 
+///
 /// Currently ignored
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum EmuRsMemoryKind {
     #[default]
     Reserved,
@@ -57,7 +67,7 @@ pub enum EmuRsMemoryKind {
 }
 
 /// A entry in the memory table used to determine where to allocate memory
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct EmuRsMemoryTableEntry {
     pub permissions: EmuRsMemoryPermission,
     pub range: EmuRsMemoryRange,
@@ -78,28 +88,43 @@ struct EmuRsAllocatorSlab {
 
 /// Implements a global allocator for the operating system
 pub struct EmuRsAllocator<MUTEX: RawMutex> {
-    memory_table: Mutex<MUTEX, Option<EmuRsMemoryTable>>,
+    memory_table: Mutex<MUTEX, EmuRsMemoryTable>,
     slabs: Mutex<MUTEX, ArrayVec<[EmuRsAllocatorSlab; SLAB_COUNT]>>,
 }
 
 impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
     pub const fn new() -> Self {
-        return Self {
-            memory_table: Mutex::new(None),
-            // This is a extremely messed up hack to make up for rust consts being really messed up
+        // This is a extremely messed up hack to make up for rust consts being really messed up
+        let my_table = Self {
+            memory_table: Mutex::new(EmuRsMemoryTable {
+                entries: ArrayVec::from_array_empty(
+                    [EmuRsMemoryTableEntry {
+                        range: EmuRsMemoryRange::new(0, 0),
+                        permissions: EmuRsMemoryPermission {
+                            read: false,
+                            write: false,
+                            execute: false,
+                        },
+                        kind: EmuRsMemoryKind::Reserved,
+                    }; 10],
+                ),
+            }),
             slabs: Mutex::new(ArrayVec::from_array_empty(
                 [EmuRsAllocatorSlab {
                     coverage: EmuRsMemoryRange { first: 0, last: 0 },
                 }; SLAB_COUNT],
             )),
         };
+
+        return my_table;
     }
 
-    /// Set the memory table. 
-    /// 
-    /// WARNING: It is completely and totally undefined to do this more than once, but I'm not locking it behind a OnceCell just yet
-    pub unsafe fn set_memory_table(&mut self, table: EmuRsMemoryTable) {
-        *self.memory_table.get_mut() = Some(table);
+    /// Indicate where more memory might be
+    pub fn add_memory_table_entries(&mut self, entries: &[EmuRsMemoryTableEntry]) {
+        self.memory_table
+            .get_mut()
+            .entries
+            .extend_from_slice(entries);
     }
 
     /// Get the ranges of free memory according to the memory and slab table
@@ -108,8 +133,6 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
         return self
             .memory_table
             .lock()
-            .as_ref()
-            .unwrap()
             .entries
             .iter()
             .flat_map(|entry| {
@@ -136,8 +159,7 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
                 }
 
                 // TODO: Check if this is sane
-                if to_return.len() == 0
-                {
+                if to_return.len() == 0 {
                     to_return.push(entry.range);
                 }
 
@@ -147,7 +169,7 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
     }
 
     /// Get a memory block that satifies the [Layout] passed in
-    /// 
+    ///
     /// FIXME: Currently ignores requested alignment.
     pub fn get_free_memory_block(&self, layout: Layout) -> EmuRsMemoryRange {
         return self
@@ -163,7 +185,7 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
 unsafe impl<MUTEX: RawMutex> GlobalAlloc for EmuRsAllocator<MUTEX> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // Make sure we have a memory table
-        if self.memory_table.lock().is_none() {
+        if self.memory_table.lock().entries.is_empty() {
             panic!();
         }
 

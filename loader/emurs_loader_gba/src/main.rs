@@ -42,17 +42,15 @@ unsafe extern "C" fn _start() -> ! {
 #[no_mangle]
 pub extern "C" fn gba_loader() -> ! {
     emurs_main(
-        EmuRsMemoryTable {
-            entries: array_vec![EmuRsMemoryTableEntry {
-                permissions: EmuRsMemoryPermission {
-                    read: true,
-                    write: true,
-                    execute: true,
-                },
-                range: EmuRsMemoryRange::new(0x2000000, 0x203ffff),
-                kind: EmuRsMemoryKind::Work
-            }],
-        },
+        &[EmuRsMemoryTableEntry {
+            permissions: EmuRsMemoryPermission {
+                read: true,
+                write: true,
+                execute: true,
+            },
+            range: EmuRsMemoryRange::new(0x2000000, 0x203ffff),
+            kind: EmuRsMemoryKind::Work,
+        }],
         GbaVideo,
         EmuRsMemoryDisk::new(unsafe {
             core::slice::from_raw_parts_mut(0xe000000 as *mut u8, 0xffff)

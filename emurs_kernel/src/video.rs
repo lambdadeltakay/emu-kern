@@ -49,7 +49,9 @@ macro_rules! rgb_color {
 
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
                 {
-                    let luma = luma(self.red(), self.blue(), self.green());
+                    // HACK: Find a better way to do this
+                    let rgb888 = self.convert_rgb::<EmuRsColorFormatRgb888>();
+                    let luma = luma(rgb888.red(), rgb888.blue(), rgb888.green());
                     return COLOR::new(luma);
                 }
 
@@ -132,7 +134,10 @@ macro_rules! bgr_color {
 
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
                 {
-                    todo!()
+                    // HACK: Find a better way to do this
+                    let rgb888 = self.convert_rgb::<EmuRsColorFormatRgb888>();
+                    let luma = luma(rgb888.red(), rgb888.blue(), rgb888.green());
+                    return COLOR::new(luma);
                 }
             }
 
@@ -220,7 +225,7 @@ macro_rules! grey_color {
                     Self: Sized,
                 {
                     debug_assert!(luma as usize <= Self::MAX);
-                    // debug_assert!($l <= size_of::<Self::InternalRepresentation>() * 8);
+                    debug_assert!($l <= size_of::<Self::InternalRepresentation>() * 8);
 
                     return Self {
                         data: $l as Self::InternalRepresentation
@@ -435,7 +440,7 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
         return value;
     }
 
-    return (value as f64).scale(to as f64 / from as f64) as u8;
+    return (value as f32).scale(to as f32 / from as f32) as u8;
 }
 
 fn luma(r: u8, g: u8, b: u8) -> u8 {

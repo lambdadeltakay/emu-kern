@@ -59,12 +59,10 @@ impl<'owner> EmuRsDiskDriver for EmuRsMemoryDisk<'owner> {
         let start = offset;
         let end = buffer.len() + offset;
 
-        unsafe {
-            self.location[start..end].copy_from_slice(buffer);
-        }
+        self.location[start..end].copy_from_slice(buffer);
     }
 
     fn read(&mut self, buffer: &mut [u8], offset: usize) {
-        buffer.copy_from_slice(unsafe { &self.location[offset..buffer.len() + offset] });
+        buffer.copy_from_slice(&self.location[offset..buffer.len() + offset]);
     }
 }
