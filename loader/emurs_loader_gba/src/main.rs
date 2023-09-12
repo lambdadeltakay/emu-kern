@@ -2,16 +2,15 @@
 #![no_main]
 #![feature(naked_functions)]
 #![feature(allocator_api)]
-#![feature(const_mut_refs)]
 
 extern crate alloc;
 
 mod video;
 
+use emurs_kernel::disk::EmuRsDummyDiskDriver;
 use emurs_kernel::prelude::tinyvec::{array_vec, TinyVec};
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
-use emurs_kernel::disk::EmuRsDummyDiskDriver;
 
 #[naked]
 #[no_mangle]
@@ -52,7 +51,8 @@ pub extern "C" fn gba_loader() -> ! {
                 kind: EmuRsMemoryKind::Work
             }],
         },
-        GbaVideo, EmuRsDummyDiskDriver
+        GbaVideo,
+        EmuRsDummyDiskDriver,
     );
 
     loop {}

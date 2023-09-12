@@ -12,8 +12,13 @@ use emurs_kernel::{
 };
 
 bitfield! {
-    pub struct DisplayControl(u8);
-    pub background_mode, set_background_mode: 3, 0;
+    pub struct DisplayControl(u16);
+    pub background_mode, set_background_mode: 2, 0;
+    pub cgb_mode_select, set_cgb_mode_select: 3;
+    pub display_background_0, set_display_background_0: 8;
+    pub display_background_1, set_display_background_1: 9;
+    pub display_background_2, set_display_background_2: 10;
+    pub display_background_3, set_display_background_3: 11;
 }
 
 const DISPCNT: *mut DisplayControl = 0x4000000 as *mut DisplayControl;
@@ -28,8 +33,10 @@ impl EmuRsDriver for GbaVideo {
     fn get_claimed(&self) -> EmuRsDevice {
         todo!()
     }
+    
     fn setup_hardware(&self) {
         unsafe { DISPCNT.as_mut().unwrap().set_background_mode(3) };
+        unsafe { DISPCNT.as_mut().unwrap().set_display_background_2(true) };
     }
 }
 

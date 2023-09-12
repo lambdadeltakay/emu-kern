@@ -9,4 +9,4 @@ members = [
 strip = "symbols"
 lto = true
 overflow-checks = false
-opt-level = 3
+opt-level = "z"

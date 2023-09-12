@@ -3,11 +3,10 @@
   "arch": "arm",
   "asm-args": [
     "-mthumb-interwork",
-    "-march=thumbv4t",
+    "-march=armv4t",
     "-mlittle-endian"
   ],
   "atomic-cas": false,
-  "c-enum-min-bits": 8,
   "cpu": "arm7tdmi",
   "data-layout": "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64",
   "emit-debug-gdb-scripts": false,
@@ -19,6 +18,5 @@
   "main-needs-argc-argv": false,
   "panic-strategy": "abort",
   "relocation-model": "static",
-  "singlethread": true,
   "target-pointer-width": "32"
 }

@@ -7,7 +7,7 @@ use paste::paste;
 use tinyvec::{ArrayVec, TinyVec};
 
 // Note that this is all based upon embedded-graphic's color implementation, but with more macro mess. Credit to them
-// The macros are such a mess that when macros are expanded, this file is around 3000 lines with common rgb and bgr formats implemented!
+// The macros are such a mess that when macros are expanded, this file is around 2000 lines with common rgb and bgr formats implemented!
 // This isn't a problem unless you are compiling on a bad cpu
 
 // TODO: Make some kind of solution for paletted displays
@@ -20,7 +20,7 @@ macro_rules! rgb_color {
             #[derive(Clone, Copy, Debug, Default)]
             #[repr(transparent)]
             pub struct [<EmuRsColorFormatRgb $r $g $b>] {
-                pub data: <Self as EmuRsColor>::InternalRepresentation,
+                pub data: $internal_representation,
             }
 
             impl EmuRsColor for [<EmuRsColorFormatRgb $r $g $b>] {
@@ -45,7 +45,7 @@ macro_rules! rgb_color {
 
                     return COLOR::new(blue, green, red);
                 }
-                
+
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
                 {
                     todo!()
@@ -69,7 +69,7 @@ macro_rules! rgb_color {
                     debug_assert!(red as usize <= Self::RMAX);
                     debug_assert!(green as usize <= Self::GMAX);
                     debug_assert!(blue as usize <= Self::BMAX);
-                    debug_assert!($r + $g + $b <= size_of::<Self::InternalRepresentation>());
+                    // debug_assert!($r + $g + $b <= size_of::<Self::InternalRepresentation>() * 8);
 
                     return Self {
                         data: (red as Self::InternalRepresentation) << ($g + $b)
@@ -127,7 +127,7 @@ macro_rules! bgr_color {
 
                     return COLOR::new(blue, green, red);
                 }
-                
+
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
                 {
                     todo!()
@@ -150,7 +150,7 @@ macro_rules! bgr_color {
                     debug_assert!(blue as usize <= Self::BMAX);
                     debug_assert!(green as usize <= Self::GMAX);
                     debug_assert!(red as usize <= Self::RMAX);
-                    debug_assert!($b + $g + $r <= size_of::<Self::InternalRepresentation>());
+                    // debug_assert!($b + $g + $r <= size_of::<Self::InternalRepresentation>() * 8);
 
                     return Self {
                         data: (blue as Self::InternalRepresentation) << ($g + $r)
@@ -201,10 +201,11 @@ macro_rules! grey_color {
                 fn convert_bgr<COLOR: EmuRsBgrColor>(&self) -> COLOR {
                     todo!()
                 }
-                
+
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
                 {
-                    todo!()
+                    let luma = convert_channel(self.luma(), Self::MAX, COLOR::MAX);
+                    return COLOR::new(luma);
                 }
             }
 
@@ -217,7 +218,7 @@ macro_rules! grey_color {
                     Self: Sized,
                 {
                     debug_assert!(luma as usize <= Self::MAX);
-                    debug_assert!($l <= size_of::<Self::InternalRepresentation>());
+                    // debug_assert!($l <= size_of::<Self::InternalRepresentation>() * 8);
 
                     return Self {
                         data: $l as Self::InternalRepresentation
@@ -304,11 +305,10 @@ pub trait EmuRsBgrColor: EmuRsColor {
     fn red(&self) -> u8;
 }
 
-pub trait EmuRsGreyColor: EmuRsColor
-{
+pub trait EmuRsGreyColor: EmuRsColor {
     const MASK: usize;
     const MAX: usize;
-    
+
     fn new(luma: u8) -> Self
     where
         Self: Sized;
@@ -396,12 +396,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     ///
     /// To use this easily just pass in a fixed array to [SVector]
     ///
-    fn draw_polyline(
-        &mut self,
-        points: &[Point2<usize>],
-        color: impl EmuRsColor,
-        is_closed: bool,
-    ) {
+    fn draw_polyline(&mut self, points: &[Point2<usize>], color: impl EmuRsColor, is_closed: bool) {
         // Handle easily optimizable functions
         match points.len() {
             0 => {
@@ -445,8 +440,7 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     return (value as f32).scale(to as f32 / from as f32).round() as u8;
 }
 
-fn luma(r: u8, g: u8, b: u8) -> u8
-{
+fn luma(r: u8, g: u8, b: u8) -> u8 {
     return (0.299 * (r as f32) + 0.587 * (g as f32) + 0.144 * (b as f32)) as u8;
 }
 

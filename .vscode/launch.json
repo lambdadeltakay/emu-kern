@@ -27,7 +27,7 @@
             "debugServerPath": "/usr/games/mgba-qt",
             "debugServerArgs": "-g ${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba",
             "cwd": "${workspaceRoot}",
-            "stopAtEntry": true,
+            "stopAtEntry": false,
             "MIMode": "gdb",
             "miDebuggerPath": "gdb-multiarch",
             "miDebuggerServerAddress": "localhost:2345",
