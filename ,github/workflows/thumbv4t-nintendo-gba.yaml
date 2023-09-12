@@ -1,0 +1,21 @@
+on: [push]
+
+name: build
+
+jobs:
+  check:
+    name: Rust project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+            target: armv4t-none-eabi
+            components: rustfmt, clippy, rust-src
+
+      - name: Build Debug
+        with:
+          command: ./debug.sh thumbv4t-none-eabi
