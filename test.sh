@@ -5,9 +5,9 @@ if [ $1 == gba ]; then
         -Zbuild-std=core,alloc                                                          \
         -Zbuild-std-features=panic_immediate_abort,compiler-builtins-mem                \
         -p emurs_loader_gba
-    mkdir -pv dist
-    llvm-objcopy -O binary target/thumbv4t-nintendo-gba/debug/emurs_loader_gba dist/emurs_loader_gba.gba
-    gbafix dist/emurs_loader_gba.gba
+    # mkdir -pv dist
+    # llvm-objcopy -O binary target/thumbv4t-nintendo-gba/debug/emurs_loader_gba dist/emurs_loader_gba.gba
+    # gbafix dist/emurs_loader_gba.gba
 fi
 
 if [ $1 == linux ]; then

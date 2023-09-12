@@ -15,6 +15,10 @@ bitfield! {
     pub struct DisplayControl(u16);
     pub background_mode, set_background_mode: 2, 0;
     pub cgb_mode_select, set_cgb_mode_select: 3;
+    pub display_frame_select, set_display_frame_select: 4;
+    pub hblank_interval_free, set_hblank_interval_free: 5;
+    pub object_character_vram_wrapping, set_object_character_vram_wrapping: 6;
+    pub forced_blank, set_forced_blank: 7;
     pub display_background_0, set_display_background_0: 8;
     pub display_background_1, set_display_background_1: 9;
     pub display_background_2, set_display_background_2: 10;
@@ -33,9 +37,10 @@ impl EmuRsDriver for GbaVideo {
     fn get_claimed(&self) -> EmuRsDevice {
         todo!()
     }
-    
+
     fn setup_hardware(&self) {
         unsafe { DISPCNT.as_mut().unwrap().set_background_mode(3) };
+        unsafe { DISPCNT.as_mut().unwrap().set_forced_blank(false) };
         unsafe { DISPCNT.as_mut().unwrap().set_display_background_2(true) };
     }
 }
@@ -44,6 +49,7 @@ impl EmuRsVideoDriver for GbaVideo {
     fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>) {
         unsafe {
             (0x6000000 as *mut u16)
+                .add(position.x + position.y * 240)
                 .write_volatile(color.convert_rgb::<EmuRsColorFormatRgb565>().raw());
         };
     }

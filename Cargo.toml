@@ -5,6 +5,9 @@ members = [
     "loader/*"
 ]
 
+[profile.dev]
+opt-level = 1
+
 [profile.release]
 strip = "symbols"
 lto = true

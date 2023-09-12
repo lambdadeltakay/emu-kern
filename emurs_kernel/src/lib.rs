@@ -38,16 +38,9 @@ pub fn emurs_main(
 
     video_driver.setup_hardware();
 
-    video_driver.draw_polyline(
-        &[Point2::new(0, 0), Point2::new(10, 10)],
-        EmuRsColorFormatRgb888::new(255, 0, 0),
-        true   
-    );
-
-    let vfs = EmuRsVfs::default();
-    vfs.normalize_path(
-        vfs::EmuRsPath { segments: &["/"] },
-        vfs::EmuRsPath { segments: &["/"] },
-    )
-    .unwrap();
+    for x in 0..240 {
+        for y in 0..160 {
+            video_driver.draw_pixel(EmuRsColorFormatRgb888::new(255, 0, 0), Point2::new(x, y));
+        }
+    }
 }
