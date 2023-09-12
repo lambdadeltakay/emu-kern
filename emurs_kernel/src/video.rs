@@ -1,6 +1,7 @@
 use core::mem::size_of;
 
 use crate::driver::EmuRsDriver;
+use nalgebra::SimdComplexField;
 use nalgebra::{ComplexField, SVector};
 use nalgebra::{Point2, Vector2};
 use paste::paste;
@@ -17,7 +18,7 @@ use tinyvec::{ArrayVec, TinyVec};
 macro_rules! rgb_color {
     ($internal_representation:ty, $r:expr, $g:expr, $b:expr) => {
         paste! {
-            #[derive(Clone, Copy, Debug, Default)]
+            #[derive(Clone, Copy, Debug, Default, PartialEq)]
             #[repr(transparent)]
             pub struct [<EmuRsColorFormatRgb $r $g $b>] {
                 pub data: $internal_representation,
@@ -48,7 +49,8 @@ macro_rules! rgb_color {
 
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
                 {
-                    todo!()
+                    let luma = luma(self.red(), self.blue(), self.green());
+                    return COLOR::new(luma);
                 }
 
             }
@@ -69,7 +71,7 @@ macro_rules! rgb_color {
                     debug_assert!(red as usize <= Self::RMAX);
                     debug_assert!(green as usize <= Self::GMAX);
                     debug_assert!(blue as usize <= Self::BMAX);
-                    // debug_assert!($r + $g + $b <= size_of::<Self::InternalRepresentation>() * 8);
+                    debug_assert!($r + $g + $b <= size_of::<Self::InternalRepresentation>() * 8);
 
                     return Self {
                         data: (red as Self::InternalRepresentation) << ($g + $b)
@@ -99,7 +101,7 @@ macro_rules! rgb_color {
 macro_rules! bgr_color {
     ($internal_representation:ty, $b:expr, $g:expr, $r:expr) => {
         paste! {
-            #[derive(Clone, Copy, Debug, Default)]
+            #[derive(Clone, Copy, Debug, Default, PartialEq)]
             #[repr(transparent)]
             pub struct [<EmuRsColorFormatBgr $b $g $r>] {
                 pub data: <Self as EmuRsColor>::InternalRepresentation,
@@ -150,7 +152,7 @@ macro_rules! bgr_color {
                     debug_assert!(blue as usize <= Self::BMAX);
                     debug_assert!(green as usize <= Self::GMAX);
                     debug_assert!(red as usize <= Self::RMAX);
-                    // debug_assert!($b + $g + $r <= size_of::<Self::InternalRepresentation>() * 8);
+                    debug_assert!($b + $g + $r <= size_of::<Self::InternalRepresentation>() * 8);
 
                     return Self {
                         data: (blue as Self::InternalRepresentation) << ($g + $r)
@@ -181,7 +183,7 @@ macro_rules! bgr_color {
 macro_rules! grey_color {
     ($internal_representation:ty, $l:expr) => {
         paste! {
-            #[derive(Clone, Copy, Debug, Default)]
+            #[derive(Clone, Copy, Debug, Default, PartialEq)]
             #[repr(transparent)]
             pub struct [<EmuRsColorFormatGrey $l>] {
                 pub data: <Self as EmuRsColor>::InternalRepresentation,
@@ -246,7 +248,7 @@ rgb_color!(u32, 8, 8, 8);
 
 bgr_color!(u8, 1, 1, 1);
 bgr_color!(u8, 2, 2, 2);
-bgr_color!(u8, 3, 3, 2);
+bgr_color!(u8, 2, 3, 3);
 bgr_color!(u16, 3, 3, 3);
 bgr_color!(u16, 4, 4, 4);
 bgr_color!(u16, 5, 5, 5);
@@ -262,7 +264,7 @@ grey_color!(u8, 8);
 
 /// The backend for a color format
 /// This allows color conversions and generic drawing functions
-pub trait EmuRsColor: Clone + Copy {
+pub trait EmuRsColor: Clone + Copy + PartialEq {
     type InternalRepresentation;
 
     fn raw(&self) -> Self::InternalRepresentation;
@@ -392,10 +394,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
         }
     }
 
-    /// Draw a polyline from a fixed array
-    ///
-    /// To use this easily just pass in a fixed array to [SVector]
-    ///
+    /// Draw a polyline from a array of points
     fn draw_polyline(&mut self, points: &[Point2<usize>], color: impl EmuRsColor, is_closed: bool) {
         // Handle easily optimizable functions
         match points.len() {
@@ -430,14 +429,13 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
 
 /// Convert a color channel to some kind of other color channel
 /// FIXME: The math here needs to be made without floats
-/// FIXME: The math here does not work at all.
 #[inline]
 fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     if to == from {
         return value;
     }
 
-    return (value as f32).scale(to as f32 / from as f32).round() as u8;
+    return (value as f64).scale(to as f64 / from as f64) as u8;
 }
 
 fn luma(r: u8, g: u8, b: u8) -> u8 {
