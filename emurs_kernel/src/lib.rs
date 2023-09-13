@@ -53,16 +53,7 @@ pub fn emurs_main(
     // Silly little test to stress what we have so far
     for x in 0..240 {
         for y in 0..160 {
-            video_driver[0].draw_polyline(
-                EmuRsGenericColor::new(0xff, 0, 0),
-                &[
-                    Point2::new(x, y),
-                    Point2::new(x + 100, y),
-                    Point2::new(x, y + 100),
-                    Point2::new(x + 100, y + 100),
-                ],
-                true,
-            );
+            video_driver[0].draw_pixel(EmuRsGenericColor::new(0, 0, 0xff), Point2::new(x, y));
         }
     }
 }

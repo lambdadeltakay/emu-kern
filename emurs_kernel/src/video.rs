@@ -437,14 +437,13 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
 }
 
 /// Convert a color channel to some kind of other color channel
-/// FIXME: The math here needs to be made without floats
 #[inline]
 fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     if to == from {
         return value;
     }
 
-    return (value as f32).scale(to as f32 / from as f32) as u8;
+    return (value as usize * (from / to)) as u8;
 }
 
 fn luma(r: u8, g: u8, b: u8) -> u8 {
