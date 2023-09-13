@@ -15,6 +15,7 @@ use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
 use prelude::EmuRsMemoryTableEntry;
 use tinyvec::ArrayVec;
+use video::EmuRsGenericColor;
 use video::{EmuRsColorFormatRgb888, EmuRsRgbColor, EmuRsVideoDriver};
 
 pub mod device;
@@ -52,28 +53,16 @@ pub fn emurs_main(
     // Silly little test to stress what we have so far
     for x in 0..240 {
         for y in 0..160 {
-            let mut buffer = Vec::with_capacity(100);
-            disk_driver[0].read(&mut buffer, x as usize + y as usize);
-
-            let mut hasher = Blake2b512::new();
-            hasher.update(buffer);
-            let hash = hasher.finalize();
-
             video_driver[0].draw_polyline(
-                &hash
-                    .iter()
-                    .flat_map(|block| {
-                        return [
-                            Point2::new(x as usize, *block as usize),
-                            Point2::new(*block as usize, y as usize),
-                        ];
-                    })
-                    .collect::<Vec<_>>(),
-                EmuRsColorFormatRgb888::new(0xff, x, y),
+                EmuRsGenericColor::new(0xff, 0, 0),
+                &[
+                    Point2::new(x, y),
+                    Point2::new(x + 100, y),
+                    Point2::new(x, y + 100),
+                    Point2::new(x + 100, y + 100),
+                ],
                 true,
             );
-
-            disk_driver[0].write(&[x as u8, y as u8], x as usize);
         }
     }
 }

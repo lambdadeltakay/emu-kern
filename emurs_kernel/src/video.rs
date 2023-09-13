@@ -13,6 +13,7 @@ use tinyvec::{ArrayVec, TinyVec};
 // This isn't a problem unless you are compiling on a bad cpu
 
 // TODO: Make some kind of solution for paletted displays
+// TODO: Add RGBI type
 
 /// Creates a new rgb color with its internal representation, and the width of the colors
 #[macro_export]
@@ -336,10 +337,10 @@ pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a single pixel. The only method that does not have a software implementation
-    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>);
+    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>);
 
     /// Draw a line. This software implementation is rather slow at the moment
-    fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<usize>, end: Point2<usize>) {
+    fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<u16>, end: Point2<u16>) {
         let start_pos = Point2::new(start.x as isize, start.y as isize);
         let end_pos = Point2::new(end.x as isize, end.y as isize);
 
@@ -356,7 +357,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
                     let mut d = (2 * dy) - dx;
                     let mut y = start_pos.y;
                     for x in start_pos.x..=end_pos.x {
-                        self.draw_pixel(color, Point2::new(x as usize, y as usize));
+                        self.draw_pixel(color, Point2::new(x as u16, y as u16));
                         if d > 0 {
                             y = y + yi;
                             d = d + (2 * (dy - dx));
@@ -384,7 +385,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
                     let mut d = (2 * dx) - dy;
                     let mut x = start_pos.x;
                     for y in start_pos.y..=end_pos.y {
-                        self.draw_pixel(color, Point2::new(x as usize, y as usize));
+                        self.draw_pixel(color, Point2::new(x as u16, y as u16));
                         if d > 0 {
                             x = x + xi;
                             d = d + (2 * (dx - dy));
@@ -403,12 +404,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     }
 
     /// Draw a polyline from a array of points
-    fn draw_polyline(
-        &mut self,
-        points: &[Point2<usize>],
-        color: EmuRsGenericColor,
-        is_closed: bool,
-    ) {
+    fn draw_polyline(&mut self, color: EmuRsGenericColor, points: &[Point2<u16>], is_closed: bool) {
         // Handle easily optimizable functions
         match points.len() {
             0 => {
@@ -475,5 +471,5 @@ impl EmuRsDriver for EmuRsDummyVideoDriver {
 }
 
 impl EmuRsVideoDriver for EmuRsDummyVideoDriver {
-    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>) {}
+    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>) {}
 }

@@ -51,10 +51,10 @@ impl EmuRsDriver for GbaVideo {
 }
 
 impl EmuRsVideoDriver for GbaVideo {
-    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>) {
+    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>) {
         unsafe {
-            let pixel_location =
-                (0x6000000 as *mut EmuRsColorFormatRgb565).add(position.x + position.y * 240);
+            let pixel_location = (0x6000000 as *mut EmuRsColorFormatRgb565)
+                .add((position.x + position.y * 240).into());
 
             if pixel_location <= 0x6017fff as *mut EmuRsColorFormatRgb565 {
                 pixel_location.write_volatile(color.convert_rgb());
