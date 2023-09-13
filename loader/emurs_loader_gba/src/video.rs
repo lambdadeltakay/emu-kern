@@ -52,13 +52,13 @@ impl EmuRsDriver for GbaVideo {
 
 impl EmuRsVideoDriver for GbaVideo {
     fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>) {
-        debug_assert!(position.x <= 240);
-        debug_assert!(position.y <= 160);
-
         unsafe {
-            (0x6000000 as *mut EmuRsColorFormatRgb565)
-                .add(position.x + position.y * 240)
-                .write_volatile(color.convert_rgb::<EmuRsColorFormatRgb565>());
+            let pixel_location =
+                (0x6000000 as *mut EmuRsColorFormatRgb565).add(position.x + position.y * 240);
+
+            if pixel_location <= 0x6017fff as *mut EmuRsColorFormatRgb565 {
+                pixel_location.write_volatile(color.convert_rgb());
+            }
         };
     }
 }
