@@ -53,8 +53,8 @@ pub extern "C" fn gba_loader() -> ! {
             range: EmuRsMemoryRange::new(0x2000000, 0x203ffff),
             kind: EmuRsMemoryKind::Work,
         }],
-        GbaVideo,
-        GbaSram,
+        &mut [&mut GbaVideo],
+        &mut [&mut GbaSram],
     );
 
     loop {}

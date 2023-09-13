@@ -1,3 +1,4 @@
+use core::any::{Any, TypeId};
 use core::mem::size_of;
 
 use crate::driver::{EmuRsDriver, EmuRsDriverPreference};
@@ -330,12 +331,6 @@ pub trait EmuRsGreyColor: EmuRsColor {
     fn luma(&self) -> u8;
 }
 
-// TODO: Evaluate if this is even needed
-
-#[cfg(feature = "short-color")]
-pub type EmuRsGenericColor = EmuRsColorFormatBgr565;
-
-#[cfg(not(feature = "short-color"))]
 pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
 
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
@@ -345,78 +340,75 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
 
     /// Draw a line. This software implementation is rather slow at the moment
     fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<usize>, end: Point2<usize>) {
-        fn plot_line_low(
-            context: &mut (impl EmuRsVideoDriver + ?Sized),
-            start_pos: Point2<isize>,
-            end_pos: Point2<isize>,
-            color: EmuRsGenericColor,
-        ) {
-            let dx = end_pos.x - start_pos.x;
-            let mut dy = end_pos.y - start_pos.y;
-            let mut yi = 1;
-            if dy < 0 {
-                yi = -1;
-                dy = -dy;
-            }
-            let mut d = (2 * dy) - dx;
-            let mut y = start_pos.y;
-            for x in start_pos.x..=end_pos.x {
-                context.draw_pixel(color, Point2::new(x as usize, y as usize));
-                if d > 0 {
-                    y = y + yi;
-                    d = d + (2 * (dy - dx));
-                } else {
-                    d = d + 2 * dy;
-                }
-            }
-        }
-
-        fn plot_line_high(
-            context: &mut (impl EmuRsVideoDriver + ?Sized),
-            start_pos: Point2<isize>,
-            end_pos: Point2<isize>,
-            color: EmuRsGenericColor,
-        ) {
-            let mut dx = end_pos.x - start_pos.x;
-            let dy = end_pos.y - start_pos.y;
-            let mut xi = 1;
-            if dx < 0 {
-                xi = -1;
-                dx = -dx;
-            }
-            let mut d = (2 * dx) - dy;
-            let mut x = start_pos.x;
-            for y in start_pos.y..=end_pos.y {
-                context.draw_pixel(color, Point2::new(x as usize, y as usize));
-                if d > 0 {
-                    x = x + xi;
-                    d = d + (2 * (dx - dy));
-                } else {
-                    d = d + 2 * dx;
-                }
-            }
-        }
-
         let start_pos = Point2::new(start.x as isize, start.y as isize);
         let end_pos = Point2::new(end.x as isize, end.y as isize);
 
         if (end_pos.y - start_pos.y).abs() < (end_pos.x - start_pos.x).abs() {
+            let mut plot_line_low =
+                |start_pos: Point2<isize>, end_pos: Point2<isize>, color: EmuRsGenericColor| {
+                    let dx = end_pos.x - start_pos.x;
+                    let mut dy = end_pos.y - start_pos.y;
+                    let mut yi = 1;
+                    if dy < 0 {
+                        yi = -1;
+                        dy = -dy;
+                    }
+                    let mut d = (2 * dy) - dx;
+                    let mut y = start_pos.y;
+                    for x in start_pos.x..=end_pos.x {
+                        self.draw_pixel(color, Point2::new(x as usize, y as usize));
+                        if d > 0 {
+                            y = y + yi;
+                            d = d + (2 * (dy - dx));
+                        } else {
+                            d = d + 2 * dy;
+                        }
+                    }
+                };
+
             if start_pos.x > end_pos.x {
-                plot_line_low(self, end_pos, start_pos, color);
+                plot_line_low(end_pos, start_pos, color);
             } else {
-                plot_line_low(self, start_pos, end_pos, color);
+                plot_line_low(start_pos, end_pos, color);
             }
         } else {
+            let mut plot_line_high =
+                |start_pos: Point2<isize>, end_pos: Point2<isize>, color: EmuRsGenericColor| {
+                    let mut dx = end_pos.x - start_pos.x;
+                    let dy = end_pos.y - start_pos.y;
+                    let mut xi = 1;
+                    if dx < 0 {
+                        xi = -1;
+                        dx = -dx;
+                    }
+                    let mut d = (2 * dx) - dy;
+                    let mut x = start_pos.x;
+                    for y in start_pos.y..=end_pos.y {
+                        self.draw_pixel(color, Point2::new(x as usize, y as usize));
+                        if d > 0 {
+                            x = x + xi;
+                            d = d + (2 * (dx - dy));
+                        } else {
+                            d = d + 2 * dx;
+                        }
+                    }
+                };
+
             if start_pos.y > end_pos.y {
-                plot_line_high(self, end_pos, start_pos, color);
+                plot_line_high(end_pos, start_pos, color);
             } else {
-                plot_line_high(self, start_pos, end_pos, color);
+                plot_line_high(start_pos, end_pos, color);
             }
         }
     }
 
     /// Draw a polyline from a array of points
-    fn draw_polyline(&mut self, points: &[Point2<usize>], color: EmuRsGenericColor, is_closed: bool) {
+    fn draw_polyline(
+        &mut self,
+        points: &[Point2<usize>],
+        color: EmuRsGenericColor,
+        is_closed: bool,
+    ) {
         // Handle easily optimizable functions
         match points.len() {
             0 => {

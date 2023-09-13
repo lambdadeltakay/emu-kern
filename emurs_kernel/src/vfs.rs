@@ -1,6 +1,8 @@
 use crate::{driver::EmuRsDriver, error::EmuRsError};
+use alloc::vec;
 use alloc::{boxed::Box, collections::BTreeMap, format};
 use core::fmt::Display;
+use tinyvec::{tiny_vec, TinyVec};
 
 pub enum EmuRsFileKind {
     File,
@@ -18,20 +20,24 @@ impl<'owner> EmuRsFile<'owner> {}
 
 /// A path with `/` seperators
 pub struct EmuRsPath<'owner> {
-    pub segments: &'owner [&'owner str],
+    pub segments: TinyVec<[&'owner str; 3]>,
 }
 
 impl<'owner> EmuRsPath<'owner> {
-    /// Does a partial check if the path is valid
-    /// A full check could only be done by [EmuRsVfs]
-    pub fn is_valid(&self) -> bool {
-        return self.segments[0] == "/" || self.segments[0] == ".." || self.segments[0] == ".";
+    pub fn is_absolute(&self) -> bool {
+        return !self.segments.is_empty()
+            && self.segments[0] == "/"
+            && !self.segments.iter().any(|segment| {
+                return *segment == ".." || *segment == ".";
+            });
     }
 }
 
 impl<'owner> Default for EmuRsPath<'owner> {
     fn default() -> Self {
-        return Self { segments: &["/"] };
+        return Self {
+            segments: tiny_vec!["/"],
+        };
     }
 }
 
@@ -69,24 +75,18 @@ impl<'owner> EmuRsVfs<'owner> {
     /// Wildly incomplete
     pub fn normalize_path(
         &self,
-        mut context_path: EmuRsPath,
+        context_path: EmuRsPath,
         relative_path: EmuRsPath,
     ) -> Result<EmuRsPath, EmuRsError> {
-        if context_path.segments.is_empty() {
-            context_path.segments = &["/"];
+        let return_path = EmuRsPath::default();
+
+        if !context_path.is_absolute() {
+            return Err(EmuRsError {
+                message: "Context path is not absolute",
+            });
         }
 
-        let result = context_path.segments.iter().find(|segment| {
-            return **segment == ".." || **segment == ".";
-        });
-
-        if result.is_some() {}
-
-        todo!();
-
-        let new_path = EmuRsPath::default();
-
-        return Ok(new_path);
+        return Ok(return_path);
     }
 }
 
