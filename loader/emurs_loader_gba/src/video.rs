@@ -5,6 +5,7 @@ use emurs_kernel::prelude::bitfield::bitfield;
 use emurs_kernel::prelude::lock_api::{Mutex, RawMutex};
 use emurs_kernel::prelude::spin::mutex::spin;
 use emurs_kernel::prelude::tinyvec::{array_vec, ArrayVec};
+use emurs_kernel::video::EmuRsGenericColor;
 use emurs_kernel::video::{EmuRsColor, EmuRsColorFormatRgb565, EmuRsRgbColor};
 use emurs_kernel::{
     prelude::nalgebra::{Point2, Vector2},
@@ -50,14 +51,14 @@ impl EmuRsDriver for GbaVideo {
 }
 
 impl EmuRsVideoDriver for GbaVideo {
-    fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>) {
+    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>) {
         debug_assert!(position.x <= 240);
         debug_assert!(position.y <= 160);
 
         unsafe {
-            (0x6000000 as *mut u16)
+            (0x6000000 as *mut EmuRsColorFormatRgb565)
                 .add(position.x + position.y * 240)
-                .write_volatile(color.convert_rgb::<EmuRsColorFormatRgb565>().raw());
+                .write_volatile(color.convert_rgb::<EmuRsColorFormatRgb565>());
         };
     }
 }

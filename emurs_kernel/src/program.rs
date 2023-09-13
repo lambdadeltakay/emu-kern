@@ -1,4 +1,1 @@
-pub struct Program
-{
-
-}
+pub trait EmuRsProgram {}

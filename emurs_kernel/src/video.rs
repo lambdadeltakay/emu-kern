@@ -241,25 +241,33 @@ macro_rules! grey_color {
 }
 
 rgb_color!(u8, 1, 1, 1);
-rgb_color!(u8, 2, 2, 2);
-rgb_color!(u8, 3, 3, 2);
-rgb_color!(u16, 3, 3, 3);
-rgb_color!(u16, 4, 4, 4);
-rgb_color!(u16, 5, 5, 5);
-rgb_color!(u16, 5, 6, 5);
-rgb_color!(u32, 6, 6, 6);
-rgb_color!(u32, 7, 7, 7);
-rgb_color!(u32, 8, 8, 8);
-
 bgr_color!(u8, 1, 1, 1);
+
+rgb_color!(u8, 2, 2, 2);
 bgr_color!(u8, 2, 2, 2);
-bgr_color!(u8, 2, 3, 3);
+
+rgb_color!(u8, 3, 3, 2);
+bgr_color!(u8, 3, 3, 2);
+
+rgb_color!(u16, 3, 3, 3);
 bgr_color!(u16, 3, 3, 3);
+
+rgb_color!(u16, 4, 4, 4);
 bgr_color!(u16, 4, 4, 4);
+
+rgb_color!(u16, 5, 5, 5);
 bgr_color!(u16, 5, 5, 5);
+
+rgb_color!(u16, 5, 6, 5);
 bgr_color!(u16, 5, 6, 5);
+
+rgb_color!(u32, 6, 6, 6);
 bgr_color!(u32, 6, 6, 6);
+
+rgb_color!(u32, 7, 7, 7);
 bgr_color!(u32, 7, 7, 7);
+
+rgb_color!(u32, 8, 8, 8);
 bgr_color!(u32, 8, 8, 8);
 
 grey_color!(u8, 1);
@@ -322,18 +330,26 @@ pub trait EmuRsGreyColor: EmuRsColor {
     fn luma(&self) -> u8;
 }
 
+// TODO: Evaluate if this is even needed
+
+#[cfg(feature = "short-color")]
+pub type EmuRsGenericColor = EmuRsColorFormatBgr565;
+
+#[cfg(not(feature = "short-color"))]
+pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
+
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a single pixel. The only method that does not have a software implementation
-    fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>);
+    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>);
 
     /// Draw a line. This software implementation is rather slow at the moment
-    fn draw_line(&mut self, color: impl EmuRsColor, start: Point2<usize>, end: Point2<usize>) {
+    fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<usize>, end: Point2<usize>) {
         fn plot_line_low(
             context: &mut (impl EmuRsVideoDriver + ?Sized),
             start_pos: Point2<isize>,
             end_pos: Point2<isize>,
-            color: impl EmuRsColor,
+            color: EmuRsGenericColor,
         ) {
             let dx = end_pos.x - start_pos.x;
             let mut dy = end_pos.y - start_pos.y;
@@ -359,7 +375,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
             context: &mut (impl EmuRsVideoDriver + ?Sized),
             start_pos: Point2<isize>,
             end_pos: Point2<isize>,
-            color: impl EmuRsColor,
+            color: EmuRsGenericColor,
         ) {
             let mut dx = end_pos.x - start_pos.x;
             let dy = end_pos.y - start_pos.y;
@@ -400,7 +416,7 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     }
 
     /// Draw a polyline from a array of points
-    fn draw_polyline(&mut self, points: &[Point2<usize>], color: impl EmuRsColor, is_closed: bool) {
+    fn draw_polyline(&mut self, points: &[Point2<usize>], color: EmuRsGenericColor, is_closed: bool) {
         // Handle easily optimizable functions
         match points.len() {
             0 => {
@@ -467,5 +483,5 @@ impl EmuRsDriver for EmuRsDummyVideoDriver {
 }
 
 impl EmuRsVideoDriver for EmuRsDummyVideoDriver {
-    fn draw_pixel(&mut self, color: impl EmuRsColor, position: Point2<usize>) {}
+    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<usize>) {}
 }
