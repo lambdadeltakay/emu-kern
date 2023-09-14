@@ -2,12 +2,67 @@ use core::any::{Any, TypeId};
 use core::mem::size_of;
 
 use crate::driver::{EmuRsDriver, EmuRsDriverPreference};
+use modular_bitfield::prelude::*;
 use nalgebra::SimdComplexField;
 use nalgebra::{ComplexField, SVector};
 use nalgebra::{Point2, Vector2};
 use paste::paste;
 use tinyvec::{ArrayVec, TinyVec};
 
+#[bitfield]
+struct PsfFontFlags {
+    pub is_512_character: B1,
+    pub has_unicode_table: B1,
+    pub modeseq: B1,
+    extra: B5,
+}
+
+pub const GNU_UNIFONT: EmuRsPsfFont = EmuRsPsfFont {
+    data: include_bytes!("../../font/Unifont-APL8x16-15.1.01.psf"),
+};
+
+pub trait EmuRsFont {
+    fn get_dimensions(&self) -> Vector2<u8>;
+    fn get_char_glyph(&self, character: char) -> Option<&[u8]>;
+    fn unicode_support(&self) -> bool;
+}
+
+pub struct EmuRsPsfFont<'owner> {
+    pub data: &'owner [u8],
+}
+
+impl<'owner> EmuRsPsfFont<'owner> {
+    fn version(&self) -> u8 {
+        if u16::from_be_bytes(self.data[0..1].try_into().unwrap()) == 0x0436 {
+            return 1;
+        }
+
+        if u32::from_be_bytes(self.data[0..3].try_into().unwrap()) == 0x864ab572 {
+            return 2;
+        }
+
+        unreachable!();
+    }
+}
+
+impl<'owner> EmuRsFont for EmuRsPsfFont<'owner> {
+    fn get_dimensions(&self) -> Vector2<u8> {
+        if self.version() == 1 {
+            return Vector2::new(8, self.data[3]);
+        }
+
+        todo!()
+    }
+
+    fn get_char_glyph(&self, character: char) -> Option<&[u8]> {
+        let start = self.get_dimensions();
+        return None;
+    }
+
+    fn unicode_support(&self) -> bool {
+        todo!()
+    }
+}
 // Note that this is all based upon embedded-graphic's color implementation, but with more macro mess. Credit to them
 // The macros are such a mess that when macros are expanded, this file is around 2000 lines with common rgb and bgr formats implemented!
 // This isn't a problem unless you are compiling on a bad cpu
