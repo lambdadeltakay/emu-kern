@@ -5,13 +5,12 @@ extern crate test;
 use emurs_kernel::prelude::*;
 use emurs_kernel::video::EmuRsColorFormatRgb565;
 use emurs_kernel::{
-    disk::EmuRsDummyDiskDriver,
     mem::EmuRsMemoryRange,
     prelude::tinyvec::{array_vec, ArrayVec},
     video::{
         EmuRsColor, EmuRsColorFormatRgb111, EmuRsColorFormatRgb222, EmuRsColorFormatRgb333,
         EmuRsColorFormatRgb444, EmuRsColorFormatRgb555, EmuRsColorFormatRgb666,
-        EmuRsColorFormatRgb777, EmuRsColorFormatRgb888, EmuRsDummyVideoDriver, EmuRsRgbColor,
+        EmuRsColorFormatRgb777, EmuRsColorFormatRgb888, EmuRsRgbColor,
     },
 };
 
@@ -32,8 +31,8 @@ pub fn main() {
             ),
             kind: EmuRsMemoryKind::Work,
         }],
-        EmuRsDummyVideoDriver,
-        EmuRsDummyDiskDriver,
+        &mut [],
+        &mut [],
     );
 }
 

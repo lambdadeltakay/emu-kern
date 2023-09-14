@@ -10,7 +10,7 @@ mod video;
 use core::ptr::NonNull;
 
 use emurs_kernel::device::EmuRsDevice;
-use emurs_kernel::disk::{EmuRsDiskDriver, EmuRsDummyDiskDriver, EmuRsMemoryDisk};
+use emurs_kernel::disk::{EmuRsDiskDriver, EmuRsMemoryDisk};
 use emurs_kernel::driver::{EmuRsDriver, EmuRsDriverPreference};
 use emurs_kernel::prelude::tinyvec::{array_vec, TinyVec};
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};

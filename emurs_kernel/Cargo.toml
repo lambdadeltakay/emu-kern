@@ -10,7 +10,7 @@ serde = { version = "1.0", default-features = false, features = [
     "derive",
     "alloc",
 ] }
-blake2 = { version = "0.10", default-features = false }
+blake3 = { version = "1.4", default-features = false }
 spin = { version = "0.9", features = ["portable_atomic", "lock_api", "once"] }
 lock_api = "0.4"
 log = { version = "0.4", default-features = false }
@@ -21,6 +21,7 @@ nalgebra = { version = "0.32", default-features = false, features = [
 ] }
 bitfield = "0.14"
 paste = "1.0"
+time = { version = "0.3", default-features = false, features = ["alloc"] }
 
 [features]
 embedded = []

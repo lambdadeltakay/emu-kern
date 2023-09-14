@@ -449,26 +449,3 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
 fn luma(r: u8, g: u8, b: u8) -> u8 {
     return (0.299 * (r as f32) + 0.587 * (g as f32) + 0.144 * (b as f32)) as u8;
 }
-
-/// A dummy driver, for devices that have no displays
-pub struct EmuRsDummyVideoDriver;
-
-impl EmuRsDriver for EmuRsDummyVideoDriver {
-    fn name(&self) -> &str {
-        return "Dummy Video Driver";
-    }
-
-    fn get_claimed(&self) -> crate::device::EmuRsDevice {
-        todo!()
-    }
-
-    fn setup_hardware(&self) {}
-
-    fn get_preference(&self) -> EmuRsDriverPreference {
-        return EmuRsDriverPreference::Fallback;
-    }
-}
-
-impl EmuRsVideoDriver for EmuRsDummyVideoDriver {
-    fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>) {}
-}

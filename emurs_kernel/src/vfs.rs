@@ -1,9 +1,13 @@
+use crate::error::EmuRsErrorReason;
 use crate::{driver::EmuRsDriver, error::EmuRsError};
 use alloc::vec;
 use alloc::{boxed::Box, collections::BTreeMap, format};
+use core::any::Any;
 use core::fmt::Display;
+use time::Date;
 use tinyvec::{tiny_vec, TinyVec};
 
+#[derive(Debug)]
 pub enum EmuRsFileKind {
     File,
     Folder,
@@ -67,7 +71,7 @@ pub struct EmuRsPermission {
 /// - `/roms.db`                        : The database containing blake2b hashes of known roms. Firmware has to appear here to be used but roms do not.
 #[derive(Default)]
 pub struct EmuRsVfs<'owner> {
-    mount_points: BTreeMap<EmuRsPath<'owner>, Box<dyn EmuRsFsBackEnd>>,
+    mount_points: BTreeMap<EmuRsPath<'owner>, Box<dyn EmuRsFsDriver>>,
 }
 
 impl<'owner> EmuRsVfs<'owner> {
@@ -82,7 +86,7 @@ impl<'owner> EmuRsVfs<'owner> {
 
         if !context_path.is_absolute() {
             return Err(EmuRsError {
-                message: "Context path is not absolute",
+                reason: EmuRsErrorReason::InvalidPath,
             });
         }
 
@@ -90,12 +94,58 @@ impl<'owner> EmuRsVfs<'owner> {
     }
 }
 
+#[derive(Debug)]
+pub struct EmuRsFileMetadata<'owner> {
+    pub modification_time: Option<Date>,
+    pub kind: Option<EmuRsFileKind>,
+    pub misc: Option<BTreeMap<&'owner str, &'owner dyn Any>>,
+}
+
 /// The driver for a file system implementation
 /// This will most likely be ustar on many, many embedded devices until I hammer out Fat or something even better
-pub trait EmuRsFsBackEnd: EmuRsDriver {
-    fn read(&self, file: EmuRsPath, buffer: &[u8], offset: usize);
-    fn write(&self, file: EmuRsPath, buffer: &mut [u8], offset: usize);
+pub trait EmuRsFsDriver: EmuRsDriver {
+    fn read(
+        &self,
+        vfs: &mut EmuRsVfs,
+        file: EmuRsPath,
+        buffer: &[u8],
+        offset: usize,
+    ) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
+    fn write(
+        &self,
+        vfs: &mut EmuRsVfs,
+        file: EmuRsPath,
+        buffer: &mut [u8],
+        offset: usize,
+    ) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
+    fn delete(&self, vfs: &mut EmuRsVfs, file: EmuRsPath) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
+    fn create(&self, vfs: &mut EmuRsVfs, file: EmuRsPath) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
 
-    fn delete(&self, file: EmuRsPath);
-    fn create(&self, file: EmuRsPath);
+    fn list_directory(&self, vfs: &mut EmuRsVfs, file: EmuRsPath) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
+
+    fn metadata(&self, vfs: &mut EmuRsVfs, file: EmuRsPath) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
 }

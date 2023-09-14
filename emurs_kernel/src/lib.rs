@@ -8,8 +8,6 @@ extern crate alloc;
 
 use crate::vfs::EmuRsVfs;
 use alloc::vec::Vec;
-use blake2::Blake2b512;
-use blake2::Digest;
 use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
@@ -28,6 +26,7 @@ pub mod prelude;
 pub mod program;
 pub mod vfs;
 pub mod video;
+
 
 pub struct EmuRsContext<'owner> {
     pub fs: EmuRsVfs<'owner>,
@@ -53,7 +52,7 @@ pub fn emurs_main(
     // Silly little test to stress what we have so far
     for x in 0..240 {
         for y in 0..160 {
-            video_driver[0].draw_pixel(EmuRsGenericColor::new(0, 0, 0xff), Point2::new(x, y));
+            video_driver[0].draw_pixel(EmuRsGenericColor::new(0, 0xff, 0xff), Point2::new(x, y));
         }
     }
 }
