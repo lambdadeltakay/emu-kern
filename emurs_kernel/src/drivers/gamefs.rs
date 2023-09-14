@@ -11,6 +11,9 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
+use blake2::Blake2s256;
+use blake2::Digest;
+use core::cell::RefCell;
 use tinyvec::TinyVec;
 
 // I bet this will inflate the heap quickly
@@ -19,7 +22,7 @@ pub struct EmuRsGameFs<'owner> {
     pub search_paths: TinyVec<[EmuRsPath<'owner>; 2]>,
     // Blake2s256 hash
     // FIXME: This is most likely extremely slow
-    pub hashtable: Vec<([u8; 32], EmuRsPath<'owner>)>,
+    pub hashtable: RefCell<Vec<([u8; 32], EmuRsPath<'owner>)>>,
 }
 
 impl<'owner> EmuRsGameFs<'owner> {
@@ -35,6 +38,28 @@ impl<'owner> EmuRsGameFs<'owner> {
                     return vfs.metadata(&filename).unwrap().kind.unwrap() == EmuRsFileKind::File;
                 });
         });
+
+        for file in files {
+            let file_len = vfs.metadata(&file).unwrap().size.unwrap();
+
+            // FIXME: REALLY GOOD WAY TO FILL RAM
+            let buffer = Vec::with_capacity(file_len);
+            let mut hasher = Blake2s256::new();
+            hasher.update(&buffer);
+            let hash = &hasher.finalize()[..];
+
+            let found = self.hashtable.borrow().iter().position(|block| {
+                return block.0 == hash;
+            });
+
+            if found.is_some() {
+                self.hashtable.borrow_mut().remove(found.unwrap());
+            }
+
+            self.hashtable
+                .borrow_mut()
+                .push((hash.clone().try_into().unwrap(), file.clone()));
+        }
     }
 }
 
@@ -61,10 +86,24 @@ impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
         &self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
-        buffer: &mut [u8],
+        mut buffer: &mut [u8],
         offset: usize,
     ) -> Result<(), EmuRsError> {
-        return Ok(());
+        self.update_hashtable(vfs);
+
+        let real_file = self.hashtable.borrow().iter().find(|hash_file| {
+            return hash_file.0 == file.file_name().as_bytes();
+        });
+
+        if real_file.is_none() {
+            return Err(EmuRsError {
+                reason: EmuRsErrorReason::InvalidPath,
+            });
+        }
+
+        let res = vfs.read(&real_file.unwrap().1, &mut buffer, offset);
+
+        return Ok(res.unwrap());
     }
 
     fn list_directory(
@@ -83,7 +122,9 @@ impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<EmuRsFileMetadata, EmuRsError> {
-        let real_file = self.hashtable.iter().find(|hash_file| {
+        self.update_hashtable(vfs);
+
+        let real_file = self.hashtable.borrow().iter().find(|hash_file| {
             return hash_file.0 == file.file_name().as_bytes();
         });
 

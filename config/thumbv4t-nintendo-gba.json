@@ -18,5 +18,7 @@
   "main-needs-argc-argv": false,
   "panic-strategy": "abort",
   "relocation-model": "static",
-  "target-pointer-width": "32"
+  "target-pointer-width": "32",
+  "env": "gba",
+  "vendor": "nintendo"
 }

@@ -338,7 +338,7 @@ pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
 pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a single pixel
     fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>);
-    
+
     /// Draw a line. This software implementation is rather slow at the moment
     fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<u16>, end: Point2<u16>) {
         let start_pos = Point2::new(start.x as isize, start.y as isize);

@@ -125,6 +125,7 @@ impl<'owner> EmuRsFilesystemManager<'owner> {
 /// The misc field here is maybe not the best way to do this but who
 #[derive(Debug, Clone)]
 pub struct EmuRsFileMetadata {
+    pub size: Option<usize>,
     pub modification_time: Option<Date>,
     pub kind: Option<EmuRsFileKind>,
 }

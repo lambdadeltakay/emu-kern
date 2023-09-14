@@ -1,7 +1,7 @@
 use alloc::string::String;
 use core::panic::PanicInfo;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum EmuRsErrorReason<'owner> {
     Custom(&'owner str),
     Unknown,
@@ -10,7 +10,7 @@ pub enum EmuRsErrorReason<'owner> {
     EndOfDiskHit,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct EmuRsError<'owner> {
     pub reason: EmuRsErrorReason<'owner>,
 }
