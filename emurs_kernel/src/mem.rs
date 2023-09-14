@@ -4,18 +4,17 @@ use core::{
     ops::RangeInclusive,
 };
 use lock_api::{Mutex, RawMutex};
-use tinyvec::ArrayVec;
+use tinyvec::{array_vec, ArrayVec};
 
 /// FIXME: We need a way for memory tables to be reloading safely
 
 /// The number of slabs the allocator can hold at a time before it panics
-const SLAB_COUNT: usize = size_of::<usize>() * 2;
+const SLAB_COUNT: usize = 128;
 
 /// The global allocator for the operating system
 #[cfg(feature = "embedded")]
 #[global_allocator]
-pub static mut EMURS_GLOBAL_MEMORY_ALLOCATOR: EmuRsAllocator<spin::mutex::Mutex<()>> =
-    EmuRsAllocator::<spin::Mutex<()>>::new();
+pub static mut EMURS_GLOBAL_MEMORY_ALLOCATOR: EmuRsAllocator = EmuRsAllocator::new();
 
 /// Type representing a memory range
 /// This was used instead of [RangeInclusive] due to it not supporting [Copy]
@@ -87,12 +86,12 @@ struct EmuRsAllocatorSlab {
 }
 
 /// Implements a global allocator for the operating system
-pub struct EmuRsAllocator<MUTEX: RawMutex> {
-    memory_table: Mutex<MUTEX, EmuRsMemoryTable>,
-    slabs: Mutex<MUTEX, ArrayVec<[EmuRsAllocatorSlab; SLAB_COUNT]>>,
+pub struct EmuRsAllocator {
+    memory_table: Mutex<spin::Mutex<()>, EmuRsMemoryTable>,
+    slabs: Mutex<spin::Mutex<()>, ArrayVec<[EmuRsAllocatorSlab; SLAB_COUNT]>>,
 }
 
-impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
+impl EmuRsAllocator {
     pub const fn new() -> Self {
         // This is a extremely messed up hack to make up for rust consts being really messed up
         let my_table = Self {
@@ -137,30 +136,48 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
             .iter()
             .flat_map(|entry| {
                 // Gotta make sure this doesn't overflow
-                let mut to_return = ArrayVec::<[EmuRsMemoryRange; SLAB_COUNT]>::new();
+                let mut to_return: ArrayVec<[EmuRsMemoryRange; SLAB_COUNT]> =
+                    array_vec![entry.range];
 
-                // Go through every slab
                 for slab in self.slabs.lock().iter() {
-                    // Get free memory at the end
-                    if entry.range.last > slab.coverage.last {
-                        to_return.push(EmuRsMemoryRange::new(
-                            self.slabs.lock()[0].coverage.last + 1,
-                            entry.range.last,
-                        ));
+                    let mut to_remove = [false; SLAB_COUNT];
+
+                    for entry in to_return.clone().iter().enumerate() {
+                        // No conflict means move on
+                        if !slab.coverage.overlaps_range(*entry.1) {
+                            continue;
+                        }
+
+                        // Its completely overlapped so remove it
+                        if slab.coverage.contains_range(*entry.1) {
+                            to_remove[entry.0] = true;
+                        }
+
+                        // Get free memory at the end
+                        if entry.1.last > slab.coverage.last {
+                            to_return
+                                .push(EmuRsMemoryRange::new(slab.coverage.last + 1, entry.1.last));
+                            to_remove[entry.0] = true;
+                        }
+
+                        // Get free memory at the start
+                        if entry.1.first < slab.coverage.first {
+                            to_return.push(EmuRsMemoryRange::new(
+                                entry.1.first,
+                                slab.coverage.first - 1,
+                            ));
+                            to_remove[entry.0] = true;
+                        }
                     }
 
-                    // Get free memory at the start
-                    if entry.range.first < slab.coverage.first {
-                        to_return.push(EmuRsMemoryRange::new(
-                            entry.range.first,
-                            self.slabs.lock()[0].coverage.first - 1,
-                        ));
+                    // Remove all the ones no longer valid
+                    let mut removed = 0;
+                    for removal in to_remove.iter().enumerate() {
+                        // Remove and shift to the left
+                        to_return.remove(removal.0 - removed);
+                        // Keep track of where we are
+                        removed += 1;
                     }
-                }
-
-                // TODO: Check if this is sane
-                if to_return.len() == 0 {
-                    to_return.push(entry.range);
                 }
 
                 return to_return;
@@ -182,7 +199,7 @@ impl<MUTEX: RawMutex> EmuRsAllocator<MUTEX> {
     }
 }
 
-unsafe impl<MUTEX: RawMutex> GlobalAlloc for EmuRsAllocator<MUTEX> {
+unsafe impl GlobalAlloc for EmuRsAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // Make sure we have a memory table
         if self.memory_table.lock().entries.is_empty() {

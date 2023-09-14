@@ -8,6 +8,7 @@ extern crate alloc;
 
 use crate::vfs::EmuRsFilesystemManager;
 use alloc::vec::Vec;
+use blake3::Hasher;
 use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
@@ -26,7 +27,6 @@ pub mod prelude;
 pub mod program;
 pub mod vfs;
 pub mod video;
-
 
 pub struct EmuRsContext<'owner> {
     pub fs: EmuRsFilesystemManager<'owner>,
@@ -52,7 +52,18 @@ pub fn emurs_main(
     // Silly little test to stress what we have so far
     for x in 0..240 {
         for y in 0..160 {
-            video_driver[0].draw_pixel(EmuRsGenericColor::new(0, 0xff, 0xff), Point2::new(x, y));
+            let mut buffer = Vec::with_capacity(1000);
+
+            let mut hasher = Hasher::new();
+            hasher.update(&buffer);
+            hasher.update(&[x as u8]);
+            let hash = hasher.finalize();
+
+            disk_driver[0].read(&mut buffer, 0);
+            video_driver[0].draw_pixel(
+                EmuRsGenericColor::new(hash.as_bytes()[0], 0xff, 0xff),
+                Point2::new(x, y),
+            );
         }
     }
 }
