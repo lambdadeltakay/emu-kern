@@ -18,5 +18,5 @@ pub struct EmuRsError<'owner> {
 #[cfg(feature = "embedded")]
 #[panic_handler]
 pub fn panic_handler(info: &PanicInfo) -> ! {
-    panic!()
+    loop {}
 }

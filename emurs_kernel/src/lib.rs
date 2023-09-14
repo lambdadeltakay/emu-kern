@@ -8,7 +8,8 @@ extern crate alloc;
 
 use crate::vfs::EmuRsFilesystemManager;
 use alloc::vec::Vec;
-use blake3::Hasher;
+use blake2::Blake2s256;
+use blake2::Digest;
 use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
@@ -41,7 +42,7 @@ pub fn emurs_main(
     memory_table_entries: &[EmuRsMemoryTableEntry],
     mut video_driver: &mut [&mut dyn EmuRsVideoDriver],
     mut disk_driver: &mut [&mut dyn EmuRsDiskDriver],
-) {
+) -> ! {
     #[cfg(feature = "embedded")]
     unsafe {
         crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.add_memory_table_entries(memory_table_entries)
@@ -49,21 +50,19 @@ pub fn emurs_main(
 
     video_driver[0].setup_hardware();
 
-    // Silly little test to stress what we have so far
-    for x in 0..240 {
-        for y in 0..160 {
-            let mut buffer = Vec::with_capacity(1000);
+    loop {
+        // Silly little test to stress what we have so far
+        for x in 0..240 {
+            for y in 0..160 {
+                let mut hasher = Blake2s256::new();
+                hasher.update(&[x as u8, y as u8]);
+                let hash = hasher.finalize();
 
-            let mut hasher = Hasher::new();
-            hasher.update(&buffer);
-            hasher.update(&[x as u8]);
-            let hash = hasher.finalize();
-
-            disk_driver[0].read(&mut buffer, 0);
-            video_driver[0].draw_pixel(
-                EmuRsGenericColor::new(hash.as_bytes()[0], 0xff, 0xff),
-                Point2::new(x, y),
-            );
+                video_driver[0].draw_pixel(
+                    EmuRsGenericColor::new(hash[0], hash[1], hash[2]),
+                    Point2::new(x as u16, y as u16),
+                );
+            }
         }
     }
 }

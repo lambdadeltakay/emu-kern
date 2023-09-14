@@ -336,9 +336,9 @@ pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
 
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
-    /// Draw a single pixel. The only method that does not have a software implementation
+    /// Draw a single pixel
     fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>);
-
+    
     /// Draw a line. This software implementation is rather slow at the moment
     fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<u16>, end: Point2<u16>) {
         let start_pos = Point2::new(start.x as isize, start.y as isize);
@@ -443,7 +443,7 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
         return value;
     }
 
-    return (value as usize * (from / to)) as u8;
+    return (value as usize * (from / to)).min(to) as u8;
 }
 
 fn luma(r: u8, g: u8, b: u8) -> u8 {

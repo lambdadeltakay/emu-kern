@@ -3,7 +3,6 @@ use crate::error::EmuRsErrorReason;
 use crate::vfs::{EmuRsFileKind, EmuRsFilesystemManager};
 use crate::{device::EmuRsDevice, error::EmuRsError};
 use alloc::collections::BTreeMap;
-use blake3::Hash;
 use tinyvec::TinyVec;
 
 use crate::{
@@ -16,7 +15,8 @@ use crate::{
 pub struct EmuRsGameFs<'owner> {
     pub search_paths: TinyVec<[EmuRsPath<'owner>; 2]>,
     // Very dumb to store hashes in a btreemap but who care
-    pub hashtable: BTreeMap<Hash, EmuRsPath<'owner>>,
+    // Blake2s256 hash
+    pub hashtable: BTreeMap<[u8; 32], EmuRsPath<'owner>>,
 }
 
 impl<'owner> EmuRsGameFs<'owner> {
