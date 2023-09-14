@@ -4,7 +4,7 @@ name: build
 
 jobs:
   check:
-    name: Rust project
+    name: thumbv4t-nintendo-gba build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,3 +17,16 @@ jobs:
 
       - shell: bash
         run: ./debug.sh thumbv4t-nintendo-gba
+      - shell: bash
+        run: ./release.sh thumbv4t-nintendo-gba
+
+      - name: Upload debug build
+        uses: actions/upload-artifact@v3
+        with:
+          name: thumbv4t-nintendo-gba-debug
+          path: target/thumbv4t-nintendo-gba/debug/emurs_loader_gba
+      - name: Upload release build
+        uses: actions/upload-artifact@v3
+        with:
+          name: thumbv4t-nintendo-gba-release
+          path: target/thumbv4t-nintendo-gba/release/emurs_loader_gba

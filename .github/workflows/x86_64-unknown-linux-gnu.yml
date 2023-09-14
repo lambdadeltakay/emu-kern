@@ -4,7 +4,7 @@ name: build
 
 jobs:
   check:
-    name: Rust project
+    name: x86_64-unknown-linux-gnu build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -18,3 +18,17 @@ jobs:
 
       - shell: bash
         run: ./debug.sh x86_64-unknown-linux-gnu
+      - shell: bash
+        run: ./release.sh x86_64-unknown-linux-gnu
+
+      - name: Upload debug build
+        uses: actions/upload-artifact@v3
+        with:
+          name: x86_64-unknown-linux-gnu-debug
+          path: target/x86_64-unknown-linux-gnu/debug/emurs_loader_desktop
+
+      - name: Upload release build
+        uses: actions/upload-artifact@v3
+        with:
+          name: x86_64-unknown-linux-gnu-release
+          path: target/x86_64-unknown-linux-gnu/release/emurs_loader_desktop
