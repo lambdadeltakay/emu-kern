@@ -1,5 +1,5 @@
 use crate::driver::EmuRsDriverPreference;
-use crate::vfs::EmuRsVfs;
+use crate::vfs::EmuRsFilesystemManager;
 use crate::{device::EmuRsDevice, error::EmuRsError};
 use alloc::collections::BTreeMap;
 use tinyvec::TinyVec;
@@ -35,11 +35,11 @@ impl<'owner> EmuRsDriver for EmuRsGameFs<'owner> {
 impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
     fn read(
         &self,
-        vfs: &mut EmuRsVfs,
+        vfs: &mut EmuRsFilesystemManager,
         file: EmuRsPath,
-        buffer: &[u8],
+        buffer: &mut [u8],
         offset: usize,
     ) -> Result<(), EmuRsError> {
-        todo!()
+        return Ok(());
     }
 }

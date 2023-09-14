@@ -6,7 +6,7 @@
 
 extern crate alloc;
 
-use crate::vfs::EmuRsVfs;
+use crate::vfs::EmuRsFilesystemManager;
 use alloc::vec::Vec;
 use disk::EmuRsDiskDriver;
 use mem::EmuRsMemoryTable;
@@ -29,7 +29,7 @@ pub mod video;
 
 
 pub struct EmuRsContext<'owner> {
-    pub fs: EmuRsVfs<'owner>,
+    pub fs: EmuRsFilesystemManager<'owner>,
     video_drivers: &'owner mut [&'owner mut dyn EmuRsVideoDriver],
 }
 

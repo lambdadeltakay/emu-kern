@@ -12,7 +12,6 @@ pub use crate::error::panic_handler;
 // Rexport these for common use
 pub use nalgebra;
 pub use tinyvec;
-pub use bitfield;
 pub use lock_api;
 // FIXME: Make own lock implementation
 pub use spin;

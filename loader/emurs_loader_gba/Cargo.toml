@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 emurs_kernel = { path = "../../emurs_kernel", features = ["embedded"]}
+modular-bitfield = "0.11"
