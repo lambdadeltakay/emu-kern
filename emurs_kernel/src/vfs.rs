@@ -7,7 +7,7 @@ use core::fmt::Display;
 use time::Date;
 use tinyvec::{tiny_vec, TinyVec};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum EmuRsFileKind {
     File,
     Folder,
@@ -94,7 +94,26 @@ impl<'owner> EmuRsFilesystemManager<'owner> {
         return Ok(return_path);
     }
 
-    pub fn read(&self, path: EmuRsPath, buffer: &mut [u8], offset: usize) {}
+    pub fn read(
+        &self,
+        path: &EmuRsPath,
+        buffer: &mut [u8],
+        offset: usize,
+    ) -> Result<(), EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
+
+    pub fn list_directory(&self, file: &EmuRsPath) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
+        return Ok(TinyVec::new());
+    }
+
+    pub fn metadata(&self, file: &EmuRsPath) -> Result<EmuRsFileMetadata, EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
+    }
 }
 
 /// Display the metadata of the file. Everything here is optional.
@@ -112,7 +131,7 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     fn read(
         &self,
         vfs: &mut EmuRsFilesystemManager,
-        file: EmuRsPath,
+        file: &EmuRsPath,
         buffer: &mut [u8],
         offset: usize,
     ) -> Result<(), EmuRsError> {
@@ -123,7 +142,7 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     fn write(
         &self,
         vfs: &mut EmuRsFilesystemManager,
-        file: EmuRsPath,
+        file: &EmuRsPath,
         buffer: &[u8],
         offset: usize,
     ) -> Result<(), EmuRsError> {
@@ -131,12 +150,12 @@ pub trait EmuRsFsDriver: EmuRsDriver {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
-    fn delete(&self, vfs: &mut EmuRsFilesystemManager, file: EmuRsPath) -> Result<(), EmuRsError> {
+    fn delete(&self, vfs: &mut EmuRsFilesystemManager, file: &EmuRsPath) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
-    fn create(&self, vfs: &mut EmuRsFilesystemManager, file: EmuRsPath) -> Result<(), EmuRsError> {
+    fn create(&self, vfs: &mut EmuRsFilesystemManager, file: &EmuRsPath) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
@@ -145,7 +164,7 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     fn list_directory(
         &self,
         vfs: &mut EmuRsFilesystemManager,
-        file: EmuRsPath,
+        file: &EmuRsPath,
     ) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
@@ -155,8 +174,8 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     fn metadata(
         &self,
         vfs: &mut EmuRsFilesystemManager,
-        file: EmuRsPath,
-    ) -> Result<(), EmuRsError> {
+        file: &EmuRsPath,
+    ) -> Result<EmuRsFileMetadata, EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });

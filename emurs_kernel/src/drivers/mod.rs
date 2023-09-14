@@ -1,2 +1,3 @@
-pub mod ustar;
-pub mod game;
+pub mod ustarfs;
+pub mod gamefs;
+pub mod cborfs;
