@@ -1,5 +1,7 @@
 use crate::error::EmuRsErrorReason;
 use crate::{driver::EmuRsDriver, error::EmuRsError};
+use alloc::rc::Rc;
+use alloc::string::String;
 use alloc::vec;
 use alloc::{boxed::Box, collections::BTreeMap, format};
 use core::any::Any;
@@ -22,7 +24,7 @@ pub struct EmuRsFile<'owner> {
 
 impl<'owner> EmuRsFile<'owner> {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 /// A path with `/` seperators
 pub struct EmuRsPath<'owner> {
     pub segments: TinyVec<[&'owner str; 3]>,
@@ -35,6 +37,10 @@ impl<'owner> EmuRsPath<'owner> {
             && !self.segments.iter().any(|segment| {
                 return *segment == ".." || *segment == ".";
             });
+    }
+
+    pub fn file_name(&self) -> &'owner str {
+        return self.segments.last().unwrap();
     }
 }
 
@@ -68,8 +74,7 @@ pub struct EmuRsPermission {
 /// - `/profiles/(profile name)/saves`  : The save files for that particular profile
 /// - `/system.toml`                    : The whole operating system config file
 /// - `/roms`                           : The rom collection for the operating system. Contains firmware for the roms too. Roms may be selected from other locations
-/// - `/roms.cache`                     : Cache of the hashes of the rom collection (may remove)
-/// - `/roms.db`                        : The database containing blake2b hashes of known roms. Firmware has to appear here to be used but roms do not.
+/// - `/roms.db`                        : The database containing blake2s hashes of known roms. Firmware has to appear here to be used but roms do not.
 #[derive(Default)]
 pub struct EmuRsFilesystemManager<'owner> {
     mount_points: BTreeMap<EmuRsPath<'owner>, Box<dyn EmuRsFsDriver>>,
@@ -118,11 +123,10 @@ impl<'owner> EmuRsFilesystemManager<'owner> {
 
 /// Display the metadata of the file. Everything here is optional.
 /// The misc field here is maybe not the best way to do this but who
-#[derive(Debug)]
-pub struct EmuRsFileMetadata<'owner> {
+#[derive(Debug, Clone)]
+pub struct EmuRsFileMetadata {
     pub modification_time: Option<Date>,
     pub kind: Option<EmuRsFileKind>,
-    pub misc: Option<BTreeMap<&'owner str, &'owner dyn Any>>,
 }
 
 /// The driver for a file system implementation

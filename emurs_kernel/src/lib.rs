@@ -32,6 +32,7 @@ pub mod video;
 pub struct EmuRsContext<'owner> {
     pub fs: EmuRsFilesystemManager<'owner>,
     video_drivers: &'owner mut [&'owner mut dyn EmuRsVideoDriver],
+    disk_drivers: &'owner mut [&'owner mut dyn EmuRsDiskDriver],
 }
 
 /// The kernel entry to be used by the bootloader

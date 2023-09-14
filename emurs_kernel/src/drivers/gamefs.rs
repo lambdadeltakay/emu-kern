@@ -1,22 +1,25 @@
 use crate::driver::EmuRsDriverPreference;
 use crate::error::EmuRsErrorReason;
+use crate::vfs::EmuRsFileMetadata;
 use crate::vfs::{EmuRsFileKind, EmuRsFilesystemManager};
 use crate::{device::EmuRsDevice, error::EmuRsError};
-use alloc::collections::BTreeMap;
-use tinyvec::TinyVec;
-
 use crate::{
     driver::EmuRsDriver,
     vfs::{EmuRsFsDriver, EmuRsPath},
 };
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::rc::Rc;
+use alloc::vec::Vec;
+use tinyvec::TinyVec;
 
 // I bet this will inflate the heap quickly
 // Mounted rom database
 pub struct EmuRsGameFs<'owner> {
     pub search_paths: TinyVec<[EmuRsPath<'owner>; 2]>,
-    // Very dumb to store hashes in a btreemap but who care
     // Blake2s256 hash
-    pub hashtable: BTreeMap<[u8; 32], EmuRsPath<'owner>>,
+    // FIXME: This is most likely extremely slow
+    pub hashtable: Vec<([u8; 32], EmuRsPath<'owner>)>,
 }
 
 impl<'owner> EmuRsGameFs<'owner> {
@@ -73,5 +76,23 @@ impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
+    }
+
+    fn metadata(
+        &self,
+        vfs: &mut EmuRsFilesystemManager,
+        file: &EmuRsPath,
+    ) -> Result<EmuRsFileMetadata, EmuRsError> {
+        let real_file = self.hashtable.iter().find(|hash_file| {
+            return hash_file.0 == file.file_name().as_bytes();
+        });
+
+        if real_file.is_none() {
+            return Err(EmuRsError {
+                reason: EmuRsErrorReason::InvalidPath,
+            });
+        }
+
+        return Ok(vfs.metadata(&real_file.unwrap().1).unwrap());
     }
 }
