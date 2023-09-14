@@ -2,6 +2,7 @@ use crate::error::EmuRsErrorReason;
 use crate::{driver::EmuRsDriver, error::EmuRsError};
 use alloc::rc::Rc;
 use alloc::string::String;
+use alloc::string::ToString;
 use alloc::vec;
 use alloc::{boxed::Box, collections::BTreeMap, format};
 use core::any::Any;
@@ -17,20 +18,20 @@ pub enum EmuRsFileKind {
     Mount,
 }
 
-pub struct EmuRsFile<'owner> {
-    pub path: EmuRsPath<'owner>,
+pub struct EmuRsFile {
+    pub path: EmuRsPath,
     pub kind: EmuRsFileKind,
 }
 
-impl<'owner> EmuRsFile<'owner> {}
+impl EmuRsFile {}
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 /// A path with `/` seperators
-pub struct EmuRsPath<'owner> {
-    pub segments: TinyVec<[&'owner str; 3]>,
+pub struct EmuRsPath {
+    pub segments: TinyVec<[String; 3]>,
 }
 
-impl<'owner> EmuRsPath<'owner> {
+impl EmuRsPath {
     pub fn is_absolute(&self) -> bool {
         return !self.segments.is_empty()
             && self.segments[0] == "/"
@@ -39,20 +40,20 @@ impl<'owner> EmuRsPath<'owner> {
             });
     }
 
-    pub fn file_name(&self) -> &'owner str {
-        return self.segments.last().unwrap();
+    pub fn file_name(&self) -> String {
+        return self.segments.last().cloned().unwrap();
     }
 }
 
-impl<'owner> Default for EmuRsPath<'owner> {
+impl Default for EmuRsPath {
     fn default() -> Self {
         return Self {
-            segments: tiny_vec!["/"],
+            segments: tiny_vec!["/".to_string()],
         };
     }
 }
 
-impl<'owner> Display for EmuRsPath<'owner> {
+impl Display for EmuRsPath {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(&self.segments.join("/")).unwrap();
         return Ok(());
@@ -76,11 +77,11 @@ pub struct EmuRsPermission {
 /// - `/roms`                           : The rom collection for the operating system. Contains firmware for the roms too. Roms may be selected from other locations
 /// - `/roms.db`                        : The database containing blake2s hashes of known roms. Firmware has to appear here to be used but roms do not.
 #[derive(Default)]
-pub struct EmuRsFilesystemManager<'owner> {
-    mount_points: BTreeMap<EmuRsPath<'owner>, Box<dyn EmuRsFsDriver>>,
+pub struct EmuRsFilesystemManager {
+    mount_points: BTreeMap<EmuRsPath, Box<dyn EmuRsFsDriver>>,
 }
 
-impl<'owner> EmuRsFilesystemManager<'owner> {
+impl EmuRsFilesystemManager {
     /// Normalize a path
     /// Wildly incomplete
     pub fn normalize_path(

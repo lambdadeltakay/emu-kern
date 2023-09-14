@@ -18,52 +18,52 @@ use tinyvec::TinyVec;
 
 // I bet this will inflate the heap quickly
 // Mounted rom database
-pub struct EmuRsGameFs<'owner> {
-    pub search_paths: TinyVec<[EmuRsPath<'owner>; 2]>,
+pub struct EmuRsGameFs {
+    pub search_paths: TinyVec<[EmuRsPath; 2]>,
     // Blake2s256 hash
     // FIXME: This is most likely extremely slow
-    pub hashtable: RefCell<Vec<([u8; 32], EmuRsPath<'owner>)>>,
+    pub hashtable: RefCell<Vec<([u8; 32], EmuRsPath)>>,
 }
 
-impl<'owner> EmuRsGameFs<'owner> {
+impl EmuRsGameFs {
     // FIXME: Only cache some files or something cause this will inflate ram quickly
     fn update_hashtable(&self, vfs: &mut EmuRsFilesystemManager) {
         // Get all the files in the search path
-        let files = self.search_paths.iter().flat_map(|search_path| {
-            return vfs
-                .list_directory(&search_path)
+
+        for path in self.search_paths.iter() {
+            vfs.list_directory(&path)
+                .clone()
                 .unwrap()
-                .into_iter()
+                .iter()
                 .filter(|filename| {
                     return vfs.metadata(&filename).unwrap().kind.unwrap() == EmuRsFileKind::File;
+                })
+                .for_each(|file| {
+                    let file_len = vfs.metadata(&file).unwrap().size.unwrap();
+
+                    // FIXME: REALLY GOOD WAY TO FILL RAM
+                    let buffer = Vec::with_capacity(file_len);
+                    let mut hasher = Blake2s256::new();
+                    hasher.update(&buffer);
+                    let hash = &hasher.finalize()[..];
+
+                    let found = self.hashtable.borrow().iter().position(|block| {
+                        return block.0 == hash;
+                    });
+
+                    if found.is_some() {
+                        self.hashtable.borrow_mut().remove(found.unwrap());
+                    }
+
+                    self.hashtable
+                        .borrow_mut()
+                        .push((hash.clone().try_into().unwrap(), file.clone()));
                 });
-        });
-
-        for file in files {
-            let file_len = vfs.metadata(&file).unwrap().size.unwrap();
-
-            // FIXME: REALLY GOOD WAY TO FILL RAM
-            let buffer = Vec::with_capacity(file_len);
-            let mut hasher = Blake2s256::new();
-            hasher.update(&buffer);
-            let hash = &hasher.finalize()[..];
-
-            let found = self.hashtable.borrow().iter().position(|block| {
-                return block.0 == hash;
-            });
-
-            if found.is_some() {
-                self.hashtable.borrow_mut().remove(found.unwrap());
-            }
-
-            self.hashtable
-                .borrow_mut()
-                .push((hash.clone().try_into().unwrap(), file.clone()));
         }
     }
 }
 
-impl<'owner> EmuRsDriver for EmuRsGameFs<'owner> {
+impl EmuRsDriver for EmuRsGameFs {
     fn name(&self) -> &str {
         return "Game Filesystem";
     }
@@ -81,7 +81,7 @@ impl<'owner> EmuRsDriver for EmuRsGameFs<'owner> {
     }
 }
 
-impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
+impl EmuRsFsDriver for EmuRsGameFs {
     fn read(
         &self,
         vfs: &mut EmuRsFilesystemManager,
@@ -91,7 +91,9 @@ impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
     ) -> Result<(), EmuRsError> {
         self.update_hashtable(vfs);
 
-        let real_file = self.hashtable.borrow().iter().find(|hash_file| {
+        let hashtable = self.hashtable.borrow();
+
+        let real_file = hashtable.iter().find(|hash_file| {
             return hash_file.0 == file.file_name().as_bytes();
         });
 
@@ -124,9 +126,14 @@ impl<'owner> EmuRsFsDriver for EmuRsGameFs<'owner> {
     ) -> Result<EmuRsFileMetadata, EmuRsError> {
         self.update_hashtable(vfs);
 
-        let real_file = self.hashtable.borrow().iter().find(|hash_file| {
-            return hash_file.0 == file.file_name().as_bytes();
-        });
+        let real_file = self
+            .hashtable
+            .borrow()
+            .iter()
+            .find(|hash_file| {
+                return hash_file.0 == file.file_name().as_bytes();
+            })
+            .cloned();
 
         if real_file.is_none() {
             return Err(EmuRsError {

@@ -30,7 +30,7 @@ pub mod vfs;
 pub mod video;
 
 pub struct EmuRsContext<'owner> {
-    pub fs: EmuRsFilesystemManager<'owner>,
+    pub fs: EmuRsFilesystemManager,
     video_drivers: &'owner mut [&'owner mut dyn EmuRsVideoDriver],
     disk_drivers: &'owner mut [&'owner mut dyn EmuRsDiskDriver],
 }
