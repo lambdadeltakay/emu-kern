@@ -57,7 +57,7 @@ impl EmuRsGameFs {
 
                     self.hashtable
                         .borrow_mut()
-                        .push((hash.clone().try_into().unwrap(), file.clone()));
+                        .push((hash.try_into().unwrap(), file.clone()));
                 });
         }
     }

@@ -12,9 +12,16 @@ use tinyvec::{array_vec, ArrayVec};
 const SLAB_COUNT: usize = 64;
 
 /// The global allocator for the operating system
-#[cfg(feature = "embedded")]
 #[global_allocator]
 pub static mut EMURS_GLOBAL_MEMORY_ALLOCATOR: EmuRsAllocator = EmuRsAllocator::new();
+
+fn align_address_upward(alignment: usize, addr: usize) -> usize {
+    return (addr - (addr % alignment)) + alignment;
+}
+
+fn align_address_downward(alignment: usize, addr: usize) -> usize {
+    return (addr - (addr % alignment)) + alignment;
+}
 
 /// Type representing a memory range
 /// This was used instead of [RangeInclusive] due to it not supporting [Copy]
@@ -94,7 +101,7 @@ pub struct EmuRsAllocator {
 impl EmuRsAllocator {
     pub const fn new() -> Self {
         // This is a extremely messed up hack to make up for rust consts being really messed up
-        let my_table = Self {
+        let mut my_table = Self {
             memory_table: Mutex::new(EmuRsMemoryTable {
                 entries: ArrayVec::from_array_empty(
                     [EmuRsMemoryTableEntry {
@@ -128,7 +135,7 @@ impl EmuRsAllocator {
 
     /// Get the ranges of free memory according to the memory and slab table
     /// This may seem slow and complicated but so far the compiler more or less wipes away every iterator
-    pub fn get_free_memory_ranges(&self) -> ArrayVec<[EmuRsMemoryRange; 128]> {
+    pub fn get_free_memory_ranges(&self, alignment: usize) -> ArrayVec<[EmuRsMemoryRange; 128]> {
         return self
             .memory_table
             .lock()
@@ -155,24 +162,32 @@ impl EmuRsAllocator {
 
                         // Get free memory at the end
                         if entry.1.last > slab.coverage.last {
-                            to_return
-                                .push(EmuRsMemoryRange::new(slab.coverage.last + 1, entry.1.last));
+                            // Trying to align
+                            let new_addr = align_address_upward(alignment, slab.coverage.last + 1);
+                            if (entry.1.first - new_addr) > alignment {
+                                to_return.push(EmuRsMemoryRange::new(new_addr, entry.1.last));
+                            }
                             to_remove[entry.0] = true;
                         }
 
                         // Get free memory at the start
                         if entry.1.first < slab.coverage.first {
-                            to_return.push(EmuRsMemoryRange::new(
-                                entry.1.first,
-                                slab.coverage.first - 1,
-                            ));
+                            // Trying to align
+                            let new_addr =
+                                align_address_downward(alignment, slab.coverage.first + 1);
+                            if (entry.1.last - new_addr) > alignment {
+                                to_return.push(EmuRsMemoryRange::new(entry.1.first, new_addr));
+                            }
+
                             to_remove[entry.0] = true;
                         }
                     }
 
                     // Remove all the ones no longer valid
                     let mut removed = 0;
-                    for removal in to_remove.iter().enumerate() {
+                    for removal in to_remove.iter().enumerate().filter(|removal| {
+                        return *removal.1;
+                    }) {
                         // Remove and shift to the left
                         to_return.remove(removal.0 - removed);
                         // Keep track of where we are
@@ -190,7 +205,7 @@ impl EmuRsAllocator {
     /// FIXME: Currently ignores requested alignment.
     pub fn get_free_memory_block(&self, layout: Layout) -> EmuRsMemoryRange {
         return self
-            .get_free_memory_ranges()
+            .get_free_memory_ranges(layout.align())
             .into_iter()
             .find(|block| {
                 return block.range().count() >= layout.size();
