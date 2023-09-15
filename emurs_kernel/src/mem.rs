@@ -163,20 +163,24 @@ impl EmuRsAllocator {
                         }
 
                         // Get free memory at the end
-                        if entry.1.last >= slab.coverage.last {
+                        if entry.1.last >= slab.coverage.last
+                            && slab.coverage.range().contains(&entry.1.first)
+                        {
                             // Trying to align
                             let new_addr = align_address_upward(alignment, slab.coverage.last + 1);
-                            if (entry.1.first - new_addr) > alignment {
+                            if (entry.1.last - new_addr) > alignment {
                                 to_return.push(EmuRsMemoryRange::new(new_addr, entry.1.last));
                             }
                         }
 
                         // Get free memory at the start
-                        if entry.1.first <= slab.coverage.first {
+                        if entry.1.first <= slab.coverage.first
+                            && slab.coverage.range().contains(&entry.1.last)
+                        {
                             // Trying to align
                             let new_addr =
-                                align_address_downward(alignment, slab.coverage.first + 1);
-                            if (entry.1.last - new_addr) > alignment {
+                                align_address_downward(alignment, slab.coverage.first - 1);
+                            if (new_addr - entry.1.first) > alignment {
                                 to_return.push(EmuRsMemoryRange::new(entry.1.first, new_addr));
                             }
                         }
@@ -220,9 +224,12 @@ unsafe impl GlobalAlloc for EmuRsAllocator {
 
         let free_mem = self.get_free_memory_block(layout);
 
-        self.slabs
-            .lock()
-            .push(EmuRsAllocatorSlab { coverage: free_mem });
+        self.slabs.lock().push(EmuRsAllocatorSlab {
+            coverage: EmuRsMemoryRange {
+                first: free_mem.first,
+                last: free_mem.first + layout.size(),
+            },
+        });
 
         return free_mem.first as *mut u8;
     }

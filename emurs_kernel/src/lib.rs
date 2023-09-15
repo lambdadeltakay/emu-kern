@@ -52,7 +52,7 @@ pub fn emurs_main(
     video_driver[0].setup_hardware();
 
     loop {
-        let random_bytes = include_bytes!("drivers/mod.rs");
+        let random_bytes = include_bytes!("mem.rs");
         video_driver[0].draw_texture(
             EmuRsTexture::new(
                 &random_bytes
@@ -61,7 +61,7 @@ pub fn emurs_main(
                         return EmuRsGenericColor::new(*byte, *byte, *byte);
                     })
                     .collect::<Vec<_>>(),
-                Point2::new(1, 1),
+                Point2::new(100, 100),
             ),
             Point2::new(0, 0),
         );
