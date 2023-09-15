@@ -1,8 +1,8 @@
 #![no_std]
-#![feature(allocator_api)]
 #![allow(clippy::needless_return)]
 #![feature(core_intrinsics)]
-#![feature(type_alias_impl_trait)]
+#![feature(const_mut_refs)]
+#![feature(allocator_api)]
 
 extern crate alloc;
 
@@ -16,6 +16,7 @@ use nalgebra::{Point2, SVector};
 use prelude::EmuRsMemoryTableEntry;
 use tinyvec::ArrayVec;
 use video::EmuRsGenericColor;
+use video::EmuRsTexture;
 use video::{EmuRsColorFormatRgb888, EmuRsRgbColor, EmuRsVideoDriver};
 
 pub mod device;
@@ -44,7 +45,6 @@ pub fn emurs_main(
     mut video_driver: &mut [&mut dyn EmuRsVideoDriver],
     mut disk_driver: &mut [&mut dyn EmuRsDiskDriver],
 ) -> ! {
-    #[cfg(feature = "embedded")]
     unsafe {
         crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.add_memory_table_entries(memory_table_entries)
     };
@@ -52,18 +52,18 @@ pub fn emurs_main(
     video_driver[0].setup_hardware();
 
     loop {
-        // Silly little test to stress what we have so far
-        for x in 0..240 {
-            for y in 0..160 {
-                let mut hasher = Blake2s256::new();
-                hasher.update(&[x as u8, y as u8]);
-                let hash = hasher.finalize();
-
-                video_driver[0].draw_pixel(
-                    EmuRsGenericColor::new(hash[0], hash[1], hash[2]),
-                    Point2::new(x as u16, y as u16),
-                );
-            }
-        }
+        let random_bytes = include_bytes!("drivers/mod.rs");
+        video_driver[0].draw_texture(
+            EmuRsTexture::new(
+                &random_bytes
+                    .into_iter()
+                    .map(|byte| {
+                        return EmuRsGenericColor::new(*byte, *byte, *byte);
+                    })
+                    .collect::<Vec<_>>(),
+                Point2::new(1, 1),
+            ),
+            Point2::new(0, 0),
+        );
     }
 }

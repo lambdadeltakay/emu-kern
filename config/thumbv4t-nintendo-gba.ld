@@ -3,15 +3,15 @@
 ENTRY(_start)
 
 MEMORY {
-  ewram (w!x) : ORIGIN = 0x2000000, LENGTH = 256K
-  iwram (w!x) : ORIGIN = 0x3000000, LENGTH = 32K
+  ewram (rwx) : ORIGIN = 0x2000000, LENGTH = 256K
+  iwram (rwx) : ORIGIN = 0x3000000, LENGTH = 32K
   rom (rx)    : ORIGIN = 0x8000000, LENGTH = 32M
 }
 
 SECTIONS {
   .text : {
     /* be sure that the ROM header is the very first */
-    *(.text.gba_rom_header);
+    *(.text.boot);
     *(.text .text.*);
     . = ALIGN(4);
   } >rom = 0x00

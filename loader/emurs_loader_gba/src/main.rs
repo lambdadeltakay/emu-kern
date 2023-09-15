@@ -19,7 +19,7 @@ use video::GbaVideo;
 #[naked]
 #[no_mangle]
 #[instruction_set(arm::a32)]
-#[link_section = ".text.gba_rom_header"]
+#[link_section = ".text.boot"]
 unsafe extern "C" fn _start() -> ! {
     core::arch::asm!(
         // Jump and leave memory for the header

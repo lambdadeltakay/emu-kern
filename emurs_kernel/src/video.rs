@@ -2,6 +2,7 @@ use core::any::{Any, TypeId};
 use core::mem::size_of;
 
 use crate::driver::{EmuRsDriver, EmuRsDriverPreference};
+use alloc::vec::Vec;
 use modular_bitfield::prelude::*;
 use nalgebra::SimdComplexField;
 use nalgebra::{ComplexField, SVector};
@@ -54,9 +55,14 @@ impl<'owner> EmuRsFont for EmuRsPsfFont<'owner> {
         todo!()
     }
 
+    /// To be honest this is what i think will work
     fn get_char_glyph(&self, character: char) -> Option<&[u8]> {
-        let start = self.get_dimensions();
-        return None;
+        let dim = self.get_dimensions();
+
+        // FIXME: Test this extensively
+        let glyph = character as usize + (dim.x as usize * dim.y as usize) + 4;
+
+        return Some(&self.data[glyph..(glyph + (dim.x as usize * dim.y as usize))]);
     }
 
     fn unicode_support(&self) -> bool {
@@ -389,10 +395,90 @@ pub trait EmuRsGreyColor: EmuRsColor {
 
 pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
 
+pub struct EmuRsTexture<COLOR: EmuRsColor> {
+    pub data: Vec<COLOR>,
+    pub dimensions: Point2<u16>,
+}
+
+impl<COLOR: EmuRsColor> EmuRsTexture<COLOR> {
+    pub fn new(data: &[COLOR], dimensions: Point2<u16>) -> Self {
+        return Self {
+            data: data.to_vec(),
+            dimensions,
+        };
+    }
+
+    pub fn pixel(&self, position: Point2<u16>) -> COLOR {
+        return self.data[(position.x + (position.y * self.dimensions.x)) as usize];
+    }
+
+    pub fn convert_rgb<OTHER_COLOR: EmuRsRgbColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        return EmuRsTexture {
+            data: self
+                .data
+                .iter()
+                .map(|color| {
+                    return color.convert_rgb();
+                })
+                .collect(),
+            dimensions: self.dimensions,
+        };
+    }
+
+    pub fn convert_bgr<OTHER_COLOR: EmuRsBgrColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        return EmuRsTexture {
+            data: self
+                .data
+                .iter()
+                .map(|color| {
+                    return color.convert_bgr();
+                })
+                .collect(),
+            dimensions: self.dimensions,
+        };
+    }
+
+    pub fn convert_grey<OTHER_COLOR: EmuRsGreyColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        return EmuRsTexture {
+            data: self
+                .data
+                .iter()
+                .map(|color| {
+                    return color.convert_grey();
+                })
+                .collect(),
+            dimensions: self.dimensions,
+        };
+    }
+}
+
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a single pixel
     fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>);
+
+    fn draw_texture(&mut self, texture: EmuRsTexture<EmuRsGenericColor>, position: Point2<u16>) {
+        for x in 0..texture.dimensions.x {
+            for y in 0..texture.dimensions.y {
+                self.draw_pixel(
+                    texture.pixel(Point2::new(x, y)),
+                    Point2::new(x + position.x, y + position.y),
+                );
+            }
+        }
+    }
+
+    /// Draw a glyph on the screen
+    fn draw_glyph(
+        &mut self,
+        color: EmuRsGenericColor,
+        position: Point2<u16>,
+        character: char,
+        font: &dyn EmuRsFont,
+    ) {
+        let font_data = font.get_char_glyph(character).unwrap();
+        let dimensions = font.get_dimensions();
+    }
 
     /// Draw a line. This software implementation is rather slow at the moment
     fn draw_line(&mut self, color: EmuRsGenericColor, start: Point2<u16>, end: Point2<u16>) {

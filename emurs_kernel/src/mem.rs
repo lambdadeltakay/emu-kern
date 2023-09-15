@@ -9,7 +9,7 @@ use tinyvec::{array_vec, ArrayVec};
 /// FIXME: We need a way for memory tables to be reloading safely
 
 /// The number of slabs the allocator can hold at a time before it panics
-const SLAB_COUNT: usize = 64;
+const SLAB_COUNT: usize = size_of::<usize>() * 8;
 
 /// The global allocator for the operating system
 #[global_allocator]
@@ -155,31 +155,30 @@ impl EmuRsAllocator {
                             continue;
                         }
 
+                        to_remove[entry.0] = true;
+
                         // Its completely overlapped so remove it
                         if slab.coverage.contains_range(*entry.1) {
-                            to_remove[entry.0] = true;
+                            continue;
                         }
 
                         // Get free memory at the end
-                        if entry.1.last > slab.coverage.last {
+                        if entry.1.last >= slab.coverage.last {
                             // Trying to align
                             let new_addr = align_address_upward(alignment, slab.coverage.last + 1);
                             if (entry.1.first - new_addr) > alignment {
                                 to_return.push(EmuRsMemoryRange::new(new_addr, entry.1.last));
                             }
-                            to_remove[entry.0] = true;
                         }
 
                         // Get free memory at the start
-                        if entry.1.first < slab.coverage.first {
+                        if entry.1.first <= slab.coverage.first {
                             // Trying to align
                             let new_addr =
                                 align_address_downward(alignment, slab.coverage.first + 1);
                             if (entry.1.last - new_addr) > alignment {
                                 to_return.push(EmuRsMemoryRange::new(entry.1.first, new_addr));
                             }
-
-                            to_remove[entry.0] = true;
                         }
                     }
 
@@ -201,8 +200,6 @@ impl EmuRsAllocator {
     }
 
     /// Get a memory block that satifies the [Layout] passed in
-    ///
-    /// FIXME: Currently ignores requested alignment.
     pub fn get_free_memory_block(&self, layout: Layout) -> EmuRsMemoryRange {
         return self
             .get_free_memory_ranges(layout.align())
