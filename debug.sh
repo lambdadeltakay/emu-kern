@@ -10,16 +10,6 @@ if [ $1 == thumbv4t-nintendo-gba ]; then
     # gbafix dist/emurs_loader_gba.gba
 fi
 
-if [ $1 == mips-nintendo-n64 ]; then
-    cargo build --target config/mips-nintendo-n64.json                              \
-        -Zbuild-std=core,alloc                                                          \
-        -Zbuild-std-features=panic_immediate_abort                \
-        -p emurs_loader_gba
-    # mkdir -pv dist
-    # llvm-objcopy -O binary target/thumbv4t-nintendo-gba/debug/emurs_loader_gba dist/emurs_loader_gba.gba
-    # gbafix dist/emurs_loader_gba.gba
-fi
-
 if [ $1 == x86_64-unknown-linux-gnu ]; then
     cargo build --target x86_64-unknown-linux-gnu -p emurs_loader_desktop
 fi

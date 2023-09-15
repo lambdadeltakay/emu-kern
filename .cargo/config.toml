@@ -5,3 +5,9 @@ rustflags = [
     "-C",
     "link-arg=-Tconfig/thumbv4t-nintendo-gba.ld",
 ]
+
+[target.mips-nintendo-n64]
+rustflags = [
+    "-C",
+    "link-arg=-Tconfig/mips-nintendo-n64.ld",
+]
