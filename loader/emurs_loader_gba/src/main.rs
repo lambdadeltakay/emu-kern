@@ -13,7 +13,6 @@ use core::ptr::NonNull;
 use emurs_kernel::device::EmuRsDevice;
 use emurs_kernel::disk::{EmuRsDiskDriver, EmuRsMemoryDisk};
 use emurs_kernel::driver::{EmuRsDriver, EmuRsDriverPreference};
-use emurs_kernel::prelude::tinyvec::{array_vec, TinyVec};
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
 
@@ -59,8 +58,6 @@ pub extern "C" fn gba_loader() -> ! {
             context.borrow_mut().add_disk_driver::<GbaSram>();
         },
     );
-
-    loop {}
 }
 
 #[derive(Default)]

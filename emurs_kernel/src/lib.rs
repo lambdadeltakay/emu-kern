@@ -7,6 +7,7 @@
 
 extern crate alloc;
 
+use core::borrow::BorrowMut;
 use core::cell::RefCell;
 use core::marker::PhantomData;
 
@@ -18,6 +19,7 @@ use alloc::vec::Vec;
 use blake2::Blake2s256;
 use blake2::Digest;
 use disk::EmuRsDiskDriver;
+use driver::EmuRsDriver;
 use lock_api::Mutex;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
@@ -67,6 +69,20 @@ impl EmuRsContext {
         self.fs_drivers
             .push(Rc::new(RefCell::new(DRIVER::default())));
     }
+
+    pub fn init(&mut self) {
+        self.video_drivers.iter().for_each(|driver| {
+            driver.as_ref().borrow_mut().setup_hardware();
+        });
+
+        self.disk_drivers.iter().for_each(|driver| {
+            driver.as_ref().borrow_mut().setup_hardware();
+        });
+
+        self.fs_drivers.iter().for_each(|driver| {
+            driver.as_ref().borrow_mut().setup_hardware();
+        });
+    }
 }
 
 /// The kernel entry to be used by the bootloader
@@ -81,9 +97,10 @@ pub fn emurs_main(
         crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.add_memory_table_entries(memory_table_entries)
     };
 
+    // We implement a callback so the drivers can use alloc if it would please them
     let context = EmuRsContext::new();
-    driver_setup_callback(context);
+    driver_setup_callback(context.clone());
+    context.as_ref().borrow_mut().init();
 
     loop {}
-    // video_driver[0].setup_hardware();
 }
