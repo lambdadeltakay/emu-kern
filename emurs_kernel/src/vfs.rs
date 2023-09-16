@@ -77,9 +77,7 @@ pub struct EmuRsPermission {
 /// - `/roms`                           : The rom collection for the operating system. Contains firmware for the roms too. Roms may be selected from other locations
 /// - `/roms.db`                        : The database containing blake2s hashes of known roms. Firmware has to appear here to be used but roms do not.
 #[derive(Default)]
-pub struct EmuRsFilesystemManager {
-    mount_points: BTreeMap<EmuRsPath, Box<dyn EmuRsFsDriver>>,
-}
+pub struct EmuRsFilesystemManager {}
 
 impl EmuRsFilesystemManager {
     /// Normalize a path

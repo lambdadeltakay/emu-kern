@@ -7,6 +7,7 @@ extern crate alloc;
 
 mod video;
 
+use core::cell::RefCell;
 use core::ptr::NonNull;
 
 use emurs_kernel::device::EmuRsDevice;
@@ -53,13 +54,16 @@ pub extern "C" fn gba_loader() -> ! {
             range: EmuRsMemoryRange::new(0x2000000, 0x203ffff),
             kind: EmuRsMemoryKind::Work,
         }],
-        &mut [&mut GbaVideo],
-        &mut [&mut GbaSram],
+        |context| {
+            context.borrow_mut().add_video_driver::<GbaVideo>();
+            context.borrow_mut().add_disk_driver::<GbaSram>();
+        },
     );
 
     loop {}
 }
 
+#[derive(Default)]
 pub struct GbaSram;
 
 impl EmuRsDriver for GbaSram {
