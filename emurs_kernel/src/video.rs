@@ -395,63 +395,6 @@ pub trait EmuRsGreyColor: EmuRsColor {
 
 pub type EmuRsGenericColor = EmuRsColorFormatRgb888;
 
-pub struct EmuRsTexture<COLOR: EmuRsColor> {
-    pub data: Vec<COLOR>,
-    pub dimensions: Point2<u16>,
-}
-
-impl<COLOR: EmuRsColor> EmuRsTexture<COLOR> {
-    pub fn new(data: &[COLOR], dimensions: Point2<u16>) -> Self {
-        return Self {
-            data: data.to_vec(),
-            dimensions,
-        };
-    }
-
-    pub fn pixel(&self, position: Point2<u16>) -> COLOR {
-        return self.data[(position.x + (position.y * self.dimensions.x)) as usize];
-    }
-
-    pub fn convert_rgb<OTHER_COLOR: EmuRsRgbColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
-        return EmuRsTexture {
-            data: self
-                .data
-                .iter()
-                .map(|color| {
-                    return color.convert_rgb();
-                })
-                .collect(),
-            dimensions: self.dimensions,
-        };
-    }
-
-    pub fn convert_bgr<OTHER_COLOR: EmuRsBgrColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
-        return EmuRsTexture {
-            data: self
-                .data
-                .iter()
-                .map(|color| {
-                    return color.convert_bgr();
-                })
-                .collect(),
-            dimensions: self.dimensions,
-        };
-    }
-
-    pub fn convert_grey<OTHER_COLOR: EmuRsGreyColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
-        return EmuRsTexture {
-            data: self
-                .data
-                .iter()
-                .map(|color| {
-                    return color.convert_grey();
-                })
-                .collect(),
-            dimensions: self.dimensions,
-        };
-    }
-}
-
 /// A video driver, with support for crude hardware acceleration that falls back to software methods
 pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a single pixel
@@ -577,6 +520,63 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     }
 }
 
+pub struct EmuRsTexture<COLOR: EmuRsColor> {
+    pub data: Vec<COLOR>,
+    pub dimensions: Point2<u16>,
+}
+
+impl<COLOR: EmuRsColor> EmuRsTexture<COLOR> {
+    pub fn new(data: &[COLOR], dimensions: Point2<u16>) -> Self {
+        return Self {
+            data: data.to_vec(),
+            dimensions,
+        };
+    }
+
+    pub fn pixel(&self, position: Point2<u16>) -> COLOR {
+        return self.data[(position.x + (position.y * self.dimensions.x)) as usize];
+    }
+
+    pub fn convert_rgb<OTHER_COLOR: EmuRsRgbColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        return EmuRsTexture {
+            data: self
+                .data
+                .iter()
+                .map(|color| {
+                    return color.convert_rgb();
+                })
+                .collect(),
+            dimensions: self.dimensions,
+        };
+    }
+
+    pub fn convert_bgr<OTHER_COLOR: EmuRsBgrColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        return EmuRsTexture {
+            data: self
+                .data
+                .iter()
+                .map(|color| {
+                    return color.convert_bgr();
+                })
+                .collect(),
+            dimensions: self.dimensions,
+        };
+    }
+
+    pub fn convert_grey<OTHER_COLOR: EmuRsGreyColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        return EmuRsTexture {
+            data: self
+                .data
+                .iter()
+                .map(|color| {
+                    return color.convert_grey();
+                })
+                .collect(),
+            dimensions: self.dimensions,
+        };
+    }
+}
+
 /// Convert a color channel to some kind of other color channel
 #[inline]
 fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
@@ -587,6 +587,7 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
     return (value as usize * (from / to)).min(to) as u8;
 }
 
+#[inline]
 fn luma(r: u8, g: u8, b: u8) -> u8 {
     return (0.299 * (r as f32) + 0.587 * (g as f32) + 0.144 * (b as f32)) as u8;
 }

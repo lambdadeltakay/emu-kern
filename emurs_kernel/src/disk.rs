@@ -11,18 +11,18 @@ use crate::error::EmuRsErrorReason;
 /// The disk implementation for filesystems to write and read
 /// IMPORTANT: Disks MUST return failure if they cannot fill the entire buffer. This is a hard requirement
 pub trait EmuRsDiskDriver: EmuRsDriver {
-    fn write(&self, buffer: &[u8], offset: usize) -> Result<(), EmuRsError> {
+    fn write(&mut self, buffer: &[u8], offset: usize) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
-    fn read(&self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
+    fn read(&mut self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
     fn get_sector_size(&mut self) -> usize;
-    fn get_total_size(&self) -> usize;
+    fn get_total_size(&mut self) -> usize;
 }
 
 /// A disk that just points somewhere in memory. Useful for the GBA save slot
@@ -31,7 +31,7 @@ pub trait EmuRsMemoryDisk {
 }
 
 impl<'owner, T: EmuRsMemoryDisk + EmuRsDriver> EmuRsDiskDriver for T {
-    fn write(&self, buffer: &[u8], offset: usize) -> Result<(), EmuRsError> {
+    fn write(&mut self, buffer: &[u8], offset: usize) -> Result<(), EmuRsError> {
         let start = offset;
         let end = buffer.len() + offset;
 
@@ -45,7 +45,7 @@ impl<'owner, T: EmuRsMemoryDisk + EmuRsDriver> EmuRsDiskDriver for T {
         return Ok(());
     }
 
-    fn read(&self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
+    fn read(&mut self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
         let start = offset;
         let end = buffer.len() + offset;
 
@@ -64,7 +64,7 @@ impl<'owner, T: EmuRsMemoryDisk + EmuRsDriver> EmuRsDiskDriver for T {
         return size_of::<usize>();
     }
 
-    fn get_total_size(&self) -> usize {
+    fn get_total_size(&mut self) -> usize {
         return self.get_memory().len();
     }
 }
@@ -91,7 +91,7 @@ impl<'owner> EmuRsDriver for EmuRsInternalDisk<'owner> {
 }
 
 impl<'owner> EmuRsDiskDriver for EmuRsInternalDisk<'owner> {
-    fn read(&self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
+    fn read(&mut self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
         let start = offset;
         let end = buffer.len() + offset;
 
@@ -110,7 +110,7 @@ impl<'owner> EmuRsDiskDriver for EmuRsInternalDisk<'owner> {
         return size_of::<usize>();
     }
 
-    fn get_total_size(&self) -> usize {
+    fn get_total_size(&mut self) -> usize {
         return self.data.len();
     }
 }

@@ -1,6 +1,6 @@
-use core::mem::size_of;
-
 use alloc::string::String;
+use core::mem::size_of;
+use core::ptr::write_volatile;
 use emurs_kernel::device::EmuRsDevice;
 use emurs_kernel::driver::*;
 use emurs_kernel::prelude::lock_api::{Mutex, RawMutex};
@@ -49,9 +49,11 @@ impl EmuRsDriver for GbaVideo {
     fn setup_hardware(&self) {
         debug_assert_eq!(size_of::<DisplayControl>(), size_of::<u16>());
 
-        unsafe { DISPCNT.as_mut().unwrap().set_background_mode(3) };
-        unsafe { DISPCNT.as_mut().unwrap().set_forced_blank(0) };
-        unsafe { DISPCNT.as_mut().unwrap().set_display_background_2(1) };
+        let dispcnt = DisplayControl::new()
+            .with_background_mode(3)
+            .with_forced_blank(0)
+            .with_display_background_2(1);
+        unsafe { DISPCNT.write_volatile(dispcnt) };
     }
 
     fn get_preference(&self) -> EmuRsDriverPreference {

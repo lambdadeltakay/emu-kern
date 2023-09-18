@@ -133,7 +133,7 @@ pub struct EmuRsFileMetadata {
 /// This will most likely be ustar on many, many embedded devices until I hammer out Fat or something even better
 pub trait EmuRsFsDriver: EmuRsDriver {
     fn read(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
         buffer: &mut [u8],
@@ -144,7 +144,7 @@ pub trait EmuRsFsDriver: EmuRsDriver {
         });
     }
     fn write(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
         buffer: &[u8],
@@ -154,19 +154,27 @@ pub trait EmuRsFsDriver: EmuRsDriver {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
-    fn delete(&self, vfs: &mut EmuRsFilesystemManager, file: &EmuRsPath) -> Result<(), EmuRsError> {
+    fn delete(
+        &mut self,
+        vfs: &mut EmuRsFilesystemManager,
+        file: &EmuRsPath,
+    ) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
-    fn create(&self, vfs: &mut EmuRsFilesystemManager, file: &EmuRsPath) -> Result<(), EmuRsError> {
+    fn create(
+        &mut self,
+        vfs: &mut EmuRsFilesystemManager,
+        file: &EmuRsPath,
+    ) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
 
     fn list_directory(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
@@ -176,7 +184,7 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     }
 
     fn metadata(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<EmuRsFileMetadata, EmuRsError> {

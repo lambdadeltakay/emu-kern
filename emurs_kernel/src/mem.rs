@@ -9,7 +9,7 @@ use tinyvec::{array_vec, ArrayVec};
 /// FIXME: We need a way for memory tables to be reloading safely
 
 /// The number of slabs the allocator can hold at a time before it panics
-const SLAB_COUNT: usize = size_of::<usize>() * 8;
+const SLAB_COUNT: usize = 64;
 
 /// The global allocator for the operating system
 #[global_allocator]
@@ -20,7 +20,7 @@ fn align_address_upward(alignment: usize, addr: usize) -> usize {
 }
 
 fn align_address_downward(alignment: usize, addr: usize) -> usize {
-    return (addr - (addr % alignment)) + alignment;
+    return (addr - addr % alignment);
 }
 
 /// Type representing a memory range
@@ -38,12 +38,12 @@ impl EmuRsMemoryRange {
 
     /// Checks if a range is inside or equal to this one
     pub fn contains_range(&self, range: EmuRsMemoryRange) -> bool {
-        return range == *self || range.first >= self.first && range.last <= self.last;
+        return range.first >= self.first && range.last <= self.last;
     }
 
     /// Checks if this range is overlapping
     pub fn overlaps_range(&self, range: EmuRsMemoryRange) -> bool {
-        return range == *self || range.first <= self.last && self.first <= range.last;
+        return range.first <= self.last && self.first <= range.last;
     }
 
     pub fn range(&self) -> RangeInclusive<usize> {
@@ -147,55 +147,44 @@ impl EmuRsAllocator {
                     array_vec![entry.range];
 
                 for slab in self.slabs.lock().iter() {
-                    let mut to_remove = [false; SLAB_COUNT];
-
-                    for entry in to_return.clone().iter().enumerate() {
-                        // No conflict means move on
-                        if !slab.coverage.overlaps_range(*entry.1) {
-                            continue;
-                        }
-
-                        to_remove[entry.0] = true;
-
-                        // Its completely overlapped so remove it
-                        if slab.coverage.contains_range(*entry.1) {
-                            continue;
-                        }
-
-                        // Get free memory at the end
-                        if entry.1.last >= slab.coverage.last
-                            && slab.coverage.range().contains(&entry.1.first)
-                        {
-                            // Trying to align
-                            let new_addr = align_address_upward(alignment, slab.coverage.last + 1);
-                            if (entry.1.last - new_addr) > alignment {
-                                to_return.push(EmuRsMemoryRange::new(new_addr, entry.1.last));
+                    to_return = to_return
+                        .into_iter()
+                        .filter_map(|entry| {
+                            // Its completely overlapped so remove it
+                            if slab.coverage.contains_range(entry) {
+                                return None;
                             }
-                        }
 
-                        // Get free memory at the start
-                        if entry.1.first <= slab.coverage.first
-                            && slab.coverage.range().contains(&entry.1.last)
-                        {
-                            // Trying to align
-                            let new_addr =
-                                align_address_downward(alignment, slab.coverage.first - 1);
-                            if (new_addr - entry.1.first) > alignment {
-                                to_return.push(EmuRsMemoryRange::new(entry.1.first, new_addr));
+                            if slab.coverage.overlaps_range(entry) {
+                                let mut accepted = ArrayVec::<[EmuRsMemoryRange; 2]>::new();
+
+                                // Get free memory at the end
+                                if entry.range().contains(&slab.coverage.last) {
+                                    // Trying to align
+                                    let new_addr =
+                                        align_address_upward(alignment, slab.coverage.last + 1);
+
+                                    accepted.push(EmuRsMemoryRange::new(new_addr, entry.last));
+                                }
+
+                                // Get free memory at the start
+                                if entry.range().contains(&slab.coverage.first) {
+                                    // Trying to align
+                                    let new_addr =
+                                        align_address_downward(alignment, slab.coverage.first - 1);
+
+                                    accepted.push(EmuRsMemoryRange::new(entry.first, new_addr));
+                                }
+
+                                return Some(accepted);
                             }
-                        }
-                    }
 
-                    // Remove all the ones no longer valid
-                    let mut removed = 0;
-                    for removal in to_remove.iter().enumerate().filter(|removal| {
-                        return *removal.1;
-                    }) {
-                        // Remove and shift to the left
-                        to_return.remove(removal.0 - removed);
-                        // Keep track of where we are
-                        removed += 1;
-                    }
+                            let mut tmp = ArrayVec::new();
+                            tmp.push(entry);
+                            return Some(tmp);
+                        })
+                        .flatten()
+                        .collect();
                 }
 
                 return to_return;
@@ -204,14 +193,22 @@ impl EmuRsAllocator {
     }
 
     /// Get a memory block that satifies the [Layout] passed in
-    pub fn get_free_memory_block(&self, layout: Layout) -> EmuRsMemoryRange {
-        return self
+    pub fn get_free_memory_block(&self, layout: Layout) -> Option<EmuRsMemoryRange> {
+        let result = self
             .get_free_memory_ranges(layout.align())
             .into_iter()
             .find(|block| {
                 return block.range().count() >= layout.size();
-            })
-            .unwrap();
+            });
+
+        if result.is_none() {
+            return None;
+        }
+
+        return Some(EmuRsMemoryRange {
+            first: result.unwrap().first,
+            last: result.unwrap().first + layout.size() - 1,
+        });
     }
 }
 
@@ -225,13 +222,10 @@ unsafe impl GlobalAlloc for EmuRsAllocator {
         let free_mem = self.get_free_memory_block(layout);
 
         self.slabs.lock().push(EmuRsAllocatorSlab {
-            coverage: EmuRsMemoryRange {
-                first: free_mem.first,
-                last: free_mem.first + layout.size(),
-            },
+            coverage: free_mem.unwrap(),
         });
 
-        return free_mem.first as *mut u8;
+        return free_mem.unwrap().first as *mut u8;
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {

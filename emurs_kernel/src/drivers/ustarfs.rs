@@ -9,7 +9,8 @@ use modular_bitfield::prelude::*;
 // https://wiki.osdev.org/USTAR
 // https://www.ibm.com/docs/en/aix/7.1?topic=files-tarh-file
 
-pub struct EmuRsUstarFs {}
+#[derive(Default)]
+pub struct EmuRsUstarFs;
 
 impl EmuRsUstarFs {}
 
@@ -26,9 +27,7 @@ impl EmuRsDriver for EmuRsUstarFs {
         todo!()
     }
 
-    fn setup_hardware(&self) {
-        todo!()
-    }
+    fn setup_hardware(&self) {}
 }
 
 impl EmuRsFsDriver for EmuRsUstarFs {}

@@ -1,54 +1,47 @@
 {
     "configurations": [
         {
-            "name": "LINUX",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/target/x86_64-unknown-linux-gnu/debug/emurs_loader_desktop",
             "args": [],
-            "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb",
+            "name": "LINUX",
+            "program": "${workspaceFolder}/target/x86_64-unknown-linux-gnu/debug/emurs_loader_desktop",
+            "request": "launch",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "GBA",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba",
-            "debugServerPath": "/usr/games/mgba-qt",
-            "debugServerArgs": "-g ${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba",
-            "cwd": "${workspaceRoot}",
-            "stopAtEntry": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "gdb-multiarch",
-            "miDebuggerServerAddress": "localhost:2345",
-            "setupCommands": [
-                {
-                    "text": "set print pretty",
-                    "ignoreFailures": false
-                },
-                {
-                    "text": "file ${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba",
-                    "ignoreFailures": false
+                    "ignoreFailures": true,
+                    "text": "-enable-pretty-printing"
                 }
             ],
-            "logging": {
-                "traceResponse": true,
-                "moduleLoad": true,
-                "trace": true,
-                "engineLogging": true,
-                "programOutput": true,
-                "exceptions": true
-            },
+            "stopAtEntry": false,
+            "type": "cppdbg"
         },
-    ],
+        {
+            "cwd": "${workspaceRoot}",
+            "debugServerArgs": "-g ${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba",
+            "debugServerPath": "/usr/games/mgba-qt",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:2345",
+            "MIMode": "gdb",
+            "name": "GBA",
+            "program": "${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba",
+            "request": "launch",
+            "setupCommands": [
+                {
+                    "ignoreFailures": false,
+                    "text": "set print pretty"
+                },
+                {
+                    "ignoreFailures": false,
+                    "text": "file ${workspaceFolder}/target/thumbv4t-nintendo-gba/debug/emurs_loader_gba"
+                }
+            ],
+            "stopAtEntry": false,
+            "targetArchitecture": "arm",
+            "type": "cppdbg"
+        }
+    ]
 }

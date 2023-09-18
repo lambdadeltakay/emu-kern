@@ -18,16 +18,18 @@ use tinyvec::TinyVec;
 
 // I bet this will inflate the heap quickly
 // Mounted rom database
+
+#[derive(Default)]
 pub struct EmuRsGameFs {
-    pub search_paths: TinyVec<[EmuRsPath; 2]>,
+    pub search_paths: Vec<EmuRsPath>,
     // Blake2s256 hash
     // FIXME: This is most likely extremely slow
-    pub hashtable: RefCell<Vec<([u8; 32], EmuRsPath)>>,
+    pub hashtable: Vec<([u8; 32], EmuRsPath)>,
 }
 
 impl EmuRsGameFs {
     // FIXME: Only cache some files or something cause this will inflate ram quickly
-    fn update_hashtable(&self, vfs: &mut EmuRsFilesystemManager) {
+    fn update_hashtable(&mut self, vfs: &mut EmuRsFilesystemManager) {
         // Get all the files in the search path
 
         for path in self.search_paths.iter() {
@@ -47,16 +49,15 @@ impl EmuRsGameFs {
                     hasher.update(&buffer);
                     let hash = &hasher.finalize()[..];
 
-                    let found = self.hashtable.borrow().iter().position(|block| {
+                    let found = self.hashtable.iter().position(|block| {
                         return block.0 == hash;
                     });
 
                     if found.is_some() {
-                        self.hashtable.borrow_mut().remove(found.unwrap());
+                        self.hashtable.remove(found.unwrap());
                     }
 
                     self.hashtable
-                        .borrow_mut()
                         .push((hash.try_into().unwrap(), file.clone()));
                 });
         }
@@ -76,14 +77,12 @@ impl EmuRsDriver for EmuRsGameFs {
         todo!()
     }
 
-    fn setup_hardware(&self) {
-        todo!()
-    }
+    fn setup_hardware(&self) {}
 }
 
 impl EmuRsFsDriver for EmuRsGameFs {
     fn read(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
         mut buffer: &mut [u8],
@@ -91,9 +90,7 @@ impl EmuRsFsDriver for EmuRsGameFs {
     ) -> Result<(), EmuRsError> {
         self.update_hashtable(vfs);
 
-        let hashtable = self.hashtable.borrow();
-
-        let real_file = hashtable.iter().find(|hash_file| {
+        let real_file = self.hashtable.iter().find(|hash_file| {
             return hash_file.0 == file.file_name().as_bytes();
         });
 
@@ -109,7 +106,7 @@ impl EmuRsFsDriver for EmuRsGameFs {
     }
 
     fn list_directory(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
@@ -120,7 +117,7 @@ impl EmuRsFsDriver for EmuRsGameFs {
     }
 
     fn metadata(
-        &self,
+        &mut self,
         vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<EmuRsFileMetadata, EmuRsError> {
@@ -128,7 +125,6 @@ impl EmuRsFsDriver for EmuRsGameFs {
 
         let real_file = self
             .hashtable
-            .borrow()
             .iter()
             .find(|hash_file| {
                 return hash_file.0 == file.file_name().as_bytes();

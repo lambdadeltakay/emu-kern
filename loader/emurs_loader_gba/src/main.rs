@@ -54,8 +54,10 @@ pub extern "C" fn gba_loader() -> ! {
             kind: EmuRsMemoryKind::Work,
         }],
         |context| {
-            context.borrow_mut().add_video_driver::<GbaVideo>();
-            context.borrow_mut().add_disk_driver::<GbaSram>();
+            context
+                .borrow_mut()
+                .add_video_driver::<GbaVideo>()
+                .add_disk_driver::<GbaSram>();
         },
     );
 }

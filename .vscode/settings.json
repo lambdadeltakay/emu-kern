@@ -1,4 +1,5 @@
 {
     "rust-analyzer.cargo.target": "config/thumbv4t-nintendo-gba.json",
-    "rust-analyzer.showUnlinkedFileNotification": false
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "rust-analyzer.check.allTargets": false
 }

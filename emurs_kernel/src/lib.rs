@@ -20,6 +20,8 @@ use blake2::Blake2s256;
 use blake2::Digest;
 use disk::EmuRsDiskDriver;
 use driver::EmuRsDriver;
+use drivers::gamefs::EmuRsGameFs;
+use drivers::ustarfs::EmuRsUstarFs;
 use lock_api::Mutex;
 use mem::EmuRsMemoryTable;
 use nalgebra::{Point2, SVector};
@@ -45,9 +47,9 @@ pub mod video;
 #[derive(Default)]
 pub struct EmuRsContext {
     pub fs: EmuRsFilesystemManager,
-    video_drivers: Vec<Rc<RefCell<dyn EmuRsVideoDriver>>>,
-    disk_drivers: Vec<Rc<RefCell<dyn EmuRsDiskDriver>>>,
-    fs_drivers: Vec<Rc<RefCell<dyn EmuRsFsDriver>>>,
+    pub video_drivers: Vec<Rc<RefCell<dyn EmuRsVideoDriver>>>,
+    pub disk_drivers: Vec<Rc<RefCell<dyn EmuRsDiskDriver>>>,
+    pub fs_drivers: Vec<Rc<RefCell<dyn EmuRsFsDriver>>>,
 }
 
 impl EmuRsContext {
@@ -55,19 +57,22 @@ impl EmuRsContext {
         return Rc::new(RefCell::new(Self::default()));
     }
 
-    pub fn add_video_driver<DRIVER: EmuRsVideoDriver + Default + 'static>(&mut self) {
+    pub fn add_video_driver<DRIVER: EmuRsVideoDriver + Default + 'static>(&mut self) -> &mut Self {
         self.video_drivers
             .push(Rc::new(RefCell::new(DRIVER::default())));
+        return self;
     }
 
-    pub fn add_disk_driver<DRIVER: EmuRsDiskDriver + Default + 'static>(&mut self) {
+    pub fn add_disk_driver<DRIVER: EmuRsDiskDriver + Default + 'static>(&mut self) -> &mut Self {
         self.disk_drivers
             .push(Rc::new(RefCell::new(DRIVER::default())));
+        return self;
     }
 
-    pub fn add_fs_driver<DRIVER: EmuRsFsDriver + Default + 'static>(&mut self) {
+    pub fn add_fs_driver<DRIVER: EmuRsFsDriver + Default + 'static>(&mut self) -> &mut Self {
         self.fs_drivers
             .push(Rc::new(RefCell::new(DRIVER::default())));
+        return self;
     }
 
     pub fn init(&mut self) {
@@ -100,7 +105,22 @@ pub fn emurs_main(
     // We implement a callback so the drivers can use alloc if it would please them
     let context = EmuRsContext::new();
     driver_setup_callback(context.clone());
-    context.as_ref().borrow_mut().init();
+
+    // Add some fs drivers
+    context
+        .as_ref()
+        .borrow_mut()
+        .add_fs_driver::<EmuRsGameFs>()
+        .add_fs_driver::<EmuRsUstarFs>()
+        .init();
+
+    context.as_ref().borrow_mut().video_drivers[0]
+        .as_ref()
+        .borrow_mut()
+        .draw_pixel(
+            EmuRsColorFormatRgb888::new(0xff, 0xff, 0xff),
+            Point2::new(0, 0),
+        );
 
     loop {}
 }
