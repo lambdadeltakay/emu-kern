@@ -31,8 +31,7 @@ pub fn main() {
             ),
             kind: EmuRsMemoryKind::Work,
         }],
-        &mut [],
-        &mut [],
+        |context| {},
     );
 }
 
