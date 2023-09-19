@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
     "emurs_kernel",
-    "loader/*"
+    "loader/*",
+    "program/*"
 ]
 
 [profile.dev]

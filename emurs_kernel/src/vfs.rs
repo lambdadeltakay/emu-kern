@@ -58,6 +58,10 @@ impl EmuRsFilesystemSubsystem {
                 reason: EmuRsErrorReason::InvalidPath,
             });
         }
+
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
     }
 
     pub fn read(
@@ -201,7 +205,7 @@ impl FromStr for EmuRsPath {
 
     // TODO: Complete this
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s[0..1] == "fs" {
+        if &s[0..1] == "fs" {
             return Ok(Self {
                 segments: tiny_vec![s.to_string()],
             });
