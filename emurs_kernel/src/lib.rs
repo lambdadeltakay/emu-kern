@@ -8,12 +8,11 @@
 extern crate alloc;
 
 use core::borrow::BorrowMut;
+use core::cell::Ref;
 use core::cell::RefCell;
 use core::marker::PhantomData;
 
 use crate::vfs::EmuRsFilesystemManager;
-use alloc::boxed::Box;
-use alloc::boxed::ThinBox;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use blake2::Blake2s256;
@@ -45,18 +44,13 @@ pub mod vfs;
 pub mod video;
 
 #[derive(Default)]
-pub struct EmuRsContext {
-    pub fs: EmuRsFilesystemManager,
+pub struct EmuRsContextBuilder {
     pub video_drivers: Vec<Rc<RefCell<dyn EmuRsVideoDriver>>>,
     pub disk_drivers: Vec<Rc<RefCell<dyn EmuRsDiskDriver>>>,
     pub fs_drivers: Vec<Rc<RefCell<dyn EmuRsFsDriver>>>,
 }
 
-impl EmuRsContext {
-    pub fn new() -> Rc<RefCell<Self>> {
-        return Rc::new(RefCell::new(Self::default()));
-    }
-
+impl EmuRsContextBuilder {
     pub fn add_video_driver<DRIVER: EmuRsVideoDriver + Default + 'static>(&mut self) -> &mut Self {
         self.video_drivers
             .push(Rc::new(RefCell::new(DRIVER::default())));
@@ -75,20 +69,38 @@ impl EmuRsContext {
         return self;
     }
 
-    pub fn init(&mut self) {
-        self.video_drivers.iter().for_each(|driver| {
-            driver.as_ref().borrow_mut().setup_hardware();
+    pub fn done(self) -> Rc<EmuRsContext> {
+        let context = Rc::new(EmuRsContext {
+            fs: RefCell::new(EmuRsFilesystemManager::default()),
+            video_drivers: self.video_drivers,
+            disk_drivers: self.disk_drivers,
+            fs_drivers: self.fs_drivers,
         });
 
-        self.disk_drivers.iter().for_each(|driver| {
-            driver.as_ref().borrow_mut().setup_hardware();
-        });
+        for driver in context.video_drivers.iter() {
+            driver.as_ref().borrow_mut().init(context.clone());
+        }
 
-        self.fs_drivers.iter().for_each(|driver| {
-            driver.as_ref().borrow_mut().setup_hardware();
-        });
+        for driver in context.disk_drivers.iter() {
+            driver.as_ref().borrow_mut().init(context.clone());
+        }
+
+        for driver in context.fs_drivers.iter() {
+            driver.as_ref().borrow_mut().init(context.clone());
+        }
+        return context;
     }
 }
+
+#[derive(Clone)]
+pub struct EmuRsContext {
+    pub fs: RefCell<EmuRsFilesystemManager>,
+    pub video_drivers: Vec<Rc<RefCell<dyn EmuRsVideoDriver>>>,
+    pub disk_drivers: Vec<Rc<RefCell<dyn EmuRsDiskDriver>>>,
+    pub fs_drivers: Vec<Rc<RefCell<dyn EmuRsFsDriver>>>,
+}
+
+impl EmuRsContext {}
 
 /// The kernel entry to be used by the bootloader
 ///
@@ -96,31 +108,31 @@ impl EmuRsContext {
 /// Later I will add a small space of memory inside of the allocator for pre setup allocations by the bootloader
 pub fn emurs_main(
     memory_table_entries: &[EmuRsMemoryTableEntry],
-    driver_setup_callback: fn(Rc<RefCell<EmuRsContext>>),
+    driver_setup_callback: fn(&mut EmuRsContextBuilder),
 ) -> ! {
     unsafe {
         crate::mem::EMURS_GLOBAL_MEMORY_ALLOCATOR.add_memory_table_entries(memory_table_entries)
     };
 
     // We implement a callback so the drivers can use alloc if it would please them
-    let context = EmuRsContext::new();
-    driver_setup_callback(context.clone());
+    let mut builder = EmuRsContextBuilder::default();
+    driver_setup_callback(&mut builder);
 
     // Add some fs drivers
-    context
-        .as_ref()
-        .borrow_mut()
+    builder
         .add_fs_driver::<EmuRsGameFs>()
-        .add_fs_driver::<EmuRsUstarFs>()
-        .init();
+        .add_fs_driver::<EmuRsUstarFs>();
 
-    context.as_ref().borrow_mut().video_drivers[0]
-        .as_ref()
-        .borrow_mut()
-        .draw_pixel(
-            EmuRsColorFormatRgb888::new(0xff, 0xff, 0xff),
-            Point2::new(0, 0),
-        );
+    let context = builder.done();
+
+    for x in 0..100 {
+        for y in 0..100 {
+            context.video_drivers[0]
+                .as_ref()
+                .borrow_mut()
+                .draw_pixel(EmuRsGenericColor::new(0xff, 0x00, 0x00), Point2::new(x, y));
+        }
+    }
 
     loop {}
 }

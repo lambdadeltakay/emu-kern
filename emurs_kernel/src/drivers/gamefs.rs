@@ -2,18 +2,23 @@ use crate::driver::EmuRsDriverPreference;
 use crate::error::EmuRsErrorReason;
 use crate::vfs::EmuRsFileMetadata;
 use crate::vfs::{EmuRsFileKind, EmuRsFilesystemManager};
+use crate::EmuRsContext;
 use crate::{device::EmuRsDevice, error::EmuRsError};
 use crate::{
     driver::EmuRsDriver,
     vfs::{EmuRsFsDriver, EmuRsPath},
 };
 use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::format;
 use alloc::rc::Rc;
+use alloc::string::String;
 use alloc::vec::Vec;
 use blake2::Blake2s256;
 use blake2::Digest;
 use core::cell::RefCell;
+use core::fmt::Write;
+use core::str::FromStr;
 use tinyvec::TinyVec;
 
 // I bet this will inflate the heap quickly
@@ -22,45 +27,60 @@ use tinyvec::TinyVec;
 #[derive(Default)]
 pub struct EmuRsGameFs {
     pub search_paths: Vec<EmuRsPath>,
-    // Blake2s256 hash
-    // FIXME: This is most likely extremely slow
-    pub hashtable: Vec<([u8; 32], EmuRsPath)>,
+    pub os_context: Option<Rc<EmuRsContext>>,
 }
 
 impl EmuRsGameFs {
-    // FIXME: Only cache some files or something cause this will inflate ram quickly
-    fn update_hashtable(&mut self, vfs: &mut EmuRsFilesystemManager) {
-        // Get all the files in the search path
-
+    /// Hash the files in the search directories and return our findings
+    fn get_hashtable(&self) -> BTreeMap<[u8; 32], EmuRsPath> {
+        let mut files = BTreeMap::new();
         for path in self.search_paths.iter() {
-            vfs.list_directory(&path)
-                .clone()
+            let directory_contents = self
+                .os_context
+                .as_ref()
                 .unwrap()
-                .iter()
-                .filter(|filename| {
-                    return vfs.metadata(&filename).unwrap().kind.unwrap() == EmuRsFileKind::File;
-                })
-                .for_each(|file| {
-                    let file_len = vfs.metadata(&file).unwrap().size.unwrap();
+                .fs
+                .borrow_mut()
+                .list_directory(&path)
+                .unwrap();
 
-                    // FIXME: REALLY GOOD WAY TO FILL RAM
-                    let buffer = Vec::with_capacity(file_len);
-                    let mut hasher = Blake2s256::new();
-                    hasher.update(&buffer);
-                    let hash = &hasher.finalize()[..];
+            files.extend(
+                directory_contents
+                    .iter()
+                    .filter(|filename| {
+                        return self
+                            .os_context
+                            .as_ref()
+                            .unwrap()
+                            .fs
+                            .borrow()
+                            .metadata(&filename)
+                            .unwrap()
+                            .kind
+                            .unwrap()
+                            == EmuRsFileKind::File;
+                    })
+                    .map(|file| {
+                        let file_len = self
+                            .os_context
+                            .as_ref()
+                            .unwrap()
+                            .fs
+                            .borrow()
+                            .metadata(&file)
+                            .unwrap()
+                            .size
+                            .unwrap();
 
-                    let found = self.hashtable.iter().position(|block| {
-                        return block.0 == hash;
-                    });
-
-                    if found.is_some() {
-                        self.hashtable.remove(found.unwrap());
-                    }
-
-                    self.hashtable
-                        .push((hash.try_into().unwrap(), file.clone()));
-                });
+                        // FIXME: REALLY GOOD WAY TO FILL RAM
+                        let buffer = Vec::with_capacity(file_len);
+                        let mut hasher = Blake2s256::new();
+                        hasher.update(&buffer);
+                        return (hasher.finalize()[..].try_into().unwrap(), file.clone());
+                    }),
+            );
         }
+        return files;
     }
 }
 
@@ -69,74 +89,48 @@ impl EmuRsDriver for EmuRsGameFs {
         return "Game Filesystem";
     }
 
-    fn get_preference(&self) -> EmuRsDriverPreference {
+    fn get_preference(&mut self) -> EmuRsDriverPreference {
         todo!()
     }
 
-    fn get_claimed(&self) -> EmuRsDevice {
+    fn get_claimed(&mut self) -> EmuRsDevice {
         todo!()
     }
 
-    fn setup_hardware(&self) {}
+    fn init(&mut self, context: Rc<EmuRsContext>) {
+        self.os_context = Some(context);
+    }
 }
 
 impl EmuRsFsDriver for EmuRsGameFs {
     fn read(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
         mut buffer: &mut [u8],
         offset: usize,
     ) -> Result<(), EmuRsError> {
-        self.update_hashtable(vfs);
-
-        let real_file = self.hashtable.iter().find(|hash_file| {
-            return hash_file.0 == file.file_name().as_bytes();
-        });
-
-        if real_file.is_none() {
-            return Err(EmuRsError {
-                reason: EmuRsErrorReason::InvalidPath,
-            });
-        }
-
-        let res = vfs.read(&real_file.unwrap().1, &mut buffer, offset);
-
-        return Ok(res.unwrap());
-    }
-
-    fn list_directory(
-        &mut self,
-        vfs: &mut EmuRsFilesystemManager,
-        file: &EmuRsPath,
-    ) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
-        self.update_hashtable(vfs);
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
 
-    fn metadata(
-        &mut self,
-        vfs: &mut EmuRsFilesystemManager,
-        file: &EmuRsPath,
-    ) -> Result<EmuRsFileMetadata, EmuRsError> {
-        self.update_hashtable(vfs);
-
-        let real_file = self
-            .hashtable
-            .iter()
-            .find(|hash_file| {
-                return hash_file.0 == file.file_name().as_bytes();
+    fn list_directory(&mut self, file: &EmuRsPath) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
+        return Ok(self
+            .get_hashtable()
+            .into_keys()
+            .map(|key| {
+                let mut string = String::new();
+                for byte in key {
+                    write!(string, "{:x}", byte);
+                }
+                return EmuRsPath::from_str(&string).unwrap();
             })
-            .cloned();
+            .collect());
+    }
 
-        if real_file.is_none() {
-            return Err(EmuRsError {
-                reason: EmuRsErrorReason::InvalidPath,
-            });
-        }
-
-        return Ok(vfs.metadata(&real_file.unwrap().1).unwrap());
+    fn metadata(&mut self, file: &EmuRsPath) -> Result<EmuRsFileMetadata, EmuRsError> {
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::OperationNotSupported,
+        });
     }
 }

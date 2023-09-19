@@ -7,6 +7,7 @@ use alloc::vec;
 use alloc::{boxed::Box, collections::BTreeMap, format};
 use core::any::Any;
 use core::fmt::Display;
+use core::str::FromStr;
 use time::Date;
 use tinyvec::{tiny_vec, TinyVec};
 
@@ -33,15 +34,35 @@ pub struct EmuRsPath {
 
 impl EmuRsPath {
     pub fn is_absolute(&self) -> bool {
-        return !self.segments.is_empty()
-            && self.segments[0] == "/"
-            && !self.segments.iter().any(|segment| {
+        return self.is_root()
+            || !self.segments.iter().any(|segment| {
                 return *segment == ".." || *segment == ".";
             });
     }
 
+    pub fn is_root(&self) -> bool {
+        return self.segments.is_empty();
+    }
+
     pub fn file_name(&self) -> String {
         return self.segments.last().cloned().unwrap();
+    }
+}
+
+impl FromStr for EmuRsPath {
+    type Err = EmuRsError;
+
+    // TODO: Complete this
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "/" {
+            return Ok(Self {
+                segments: tiny_vec![s.to_string()],
+            });
+        }
+
+        return Err(EmuRsError {
+            reason: EmuRsErrorReason::InvalidPath,
+        });
     }
 }
 
@@ -76,7 +97,7 @@ pub struct EmuRsPermission {
 /// - `/system.toml`                    : The whole operating system config file
 /// - `/roms`                           : The rom collection for the operating system. Contains firmware for the roms too. Roms may be selected from other locations
 /// - `/roms.db`                        : The database containing blake2s hashes of known roms. Firmware has to appear here to be used but roms do not.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct EmuRsFilesystemManager {}
 
 impl EmuRsFilesystemManager {
@@ -134,7 +155,6 @@ pub struct EmuRsFileMetadata {
 pub trait EmuRsFsDriver: EmuRsDriver {
     fn read(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
         buffer: &mut [u8],
         offset: usize,
@@ -145,7 +165,6 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     }
     fn write(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
         buffer: &[u8],
         offset: usize,
@@ -156,7 +175,6 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     }
     fn delete(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
@@ -165,7 +183,6 @@ pub trait EmuRsFsDriver: EmuRsDriver {
     }
     fn create(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
@@ -175,7 +192,6 @@ pub trait EmuRsFsDriver: EmuRsDriver {
 
     fn list_directory(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
         return Err(EmuRsError {
@@ -185,7 +201,6 @@ pub trait EmuRsFsDriver: EmuRsDriver {
 
     fn metadata(
         &mut self,
-        vfs: &mut EmuRsFilesystemManager,
         file: &EmuRsPath,
     ) -> Result<EmuRsFileMetadata, EmuRsError> {
         return Err(EmuRsError {

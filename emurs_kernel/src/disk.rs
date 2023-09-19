@@ -7,6 +7,9 @@ use crate::driver::EmuRsDriver;
 use crate::driver::EmuRsDriverPreference;
 use crate::error::EmuRsError;
 use crate::error::EmuRsErrorReason;
+use crate::EmuRsContext;
+use alloc::rc::Rc;
+use core::cell::RefCell;
 
 /// The disk implementation for filesystems to write and read
 /// IMPORTANT: Disks MUST return failure if they cannot fill the entire buffer. This is a hard requirement
@@ -79,15 +82,13 @@ impl<'owner> EmuRsDriver for EmuRsInternalDisk<'owner> {
         return "Internal Disk";
     }
 
-    fn get_preference(&self) -> EmuRsDriverPreference {
+    fn get_preference(&mut self) -> EmuRsDriverPreference {
         todo!()
     }
 
-    fn get_claimed(&self) -> EmuRsDevice {
+    fn get_claimed(&mut self) -> EmuRsDevice {
         todo!()
     }
-
-    fn setup_hardware(&self) {}
 }
 
 impl<'owner> EmuRsDiskDriver for EmuRsInternalDisk<'owner> {

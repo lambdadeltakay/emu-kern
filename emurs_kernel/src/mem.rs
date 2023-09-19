@@ -9,7 +9,7 @@ use tinyvec::{array_vec, ArrayVec};
 /// FIXME: We need a way for memory tables to be reloading safely
 
 /// The number of slabs the allocator can hold at a time before it panics
-const SLAB_COUNT: usize = 64;
+const SLAB_COUNT: usize = 128;
 
 /// The global allocator for the operating system
 #[global_allocator]
@@ -20,7 +20,7 @@ fn align_address_upward(alignment: usize, addr: usize) -> usize {
 }
 
 fn align_address_downward(alignment: usize, addr: usize) -> usize {
-    return (addr - addr % alignment);
+    return addr - addr % alignment;
 }
 
 /// Type representing a memory range

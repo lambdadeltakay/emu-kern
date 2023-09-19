@@ -1,9 +1,11 @@
+use crate::EmuRsContext;
 use crate::{
     disk::EmuRsDiskDriver,
     driver::EmuRsDriver,
     vfs::{EmuRsFilesystemManager, EmuRsFsDriver, EmuRsPath},
 };
-use alloc::boxed::Box;
+use alloc::rc::Rc;
+use core::cell::RefCell;
 use modular_bitfield::prelude::*;
 
 // https://wiki.osdev.org/USTAR
@@ -19,15 +21,13 @@ impl EmuRsDriver for EmuRsUstarFs {
         todo!()
     }
 
-    fn get_preference(&self) -> crate::driver::EmuRsDriverPreference {
+    fn get_preference(&mut self) -> crate::driver::EmuRsDriverPreference {
         todo!()
     }
 
-    fn get_claimed(&self) -> crate::device::EmuRsDevice {
+    fn get_claimed(&mut self) -> crate::device::EmuRsDevice {
         todo!()
     }
-
-    fn setup_hardware(&self) {}
 }
 
 impl EmuRsFsDriver for EmuRsUstarFs {}

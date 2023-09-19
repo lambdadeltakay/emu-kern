@@ -10,9 +10,11 @@ mod video;
 use core::cell::RefCell;
 use core::ptr::NonNull;
 
+use alloc::rc::Rc;
 use emurs_kernel::device::EmuRsDevice;
 use emurs_kernel::disk::{EmuRsDiskDriver, EmuRsMemoryDisk};
 use emurs_kernel::driver::{EmuRsDriver, EmuRsDriverPreference};
+use emurs_kernel::EmuRsContext;
 use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
 
@@ -53,9 +55,8 @@ pub extern "C" fn gba_loader() -> ! {
             range: EmuRsMemoryRange::new(0x2000000, 0x203ffff),
             kind: EmuRsMemoryKind::Work,
         }],
-        |context| {
+        |mut context| {
             context
-                .borrow_mut()
                 .add_video_driver::<GbaVideo>()
                 .add_disk_driver::<GbaSram>();
         },
@@ -70,13 +71,11 @@ impl EmuRsDriver for GbaSram {
         return "Game Boy Advance SRAM";
     }
 
-    fn get_claimed(&self) -> EmuRsDevice {
+    fn get_claimed(&mut self) -> EmuRsDevice {
         todo!()
     }
 
-    fn setup_hardware(&self) {}
-
-    fn get_preference(&self) -> EmuRsDriverPreference {
+    fn get_preference(&mut self) -> EmuRsDriverPreference {
         return EmuRsDriverPreference::Preferred;
     }
 }

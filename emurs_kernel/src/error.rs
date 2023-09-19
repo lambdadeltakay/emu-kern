@@ -2,8 +2,8 @@ use alloc::string::String;
 use core::panic::PanicInfo;
 
 #[derive(Clone, Debug)]
-pub enum EmuRsErrorReason<'owner> {
-    Custom(&'owner str),
+pub enum EmuRsErrorReason {
+    Custom(String),
     Unknown,
     OperationNotSupported,
     InvalidPath,
@@ -11,8 +11,8 @@ pub enum EmuRsErrorReason<'owner> {
 }
 
 #[derive(Clone, Debug)]
-pub struct EmuRsError<'owner> {
-    pub reason: EmuRsErrorReason<'owner>,
+pub struct EmuRsError {
+    pub reason: EmuRsErrorReason,
 }
 
 #[cfg(feature = "embedded")]

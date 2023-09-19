@@ -1,3 +1,4 @@
+use alloc::rc::Rc;
 use alloc::string::String;
 use core::mem::size_of;
 use core::ptr::write_volatile;
@@ -8,6 +9,7 @@ use emurs_kernel::prelude::spin::mutex::spin;
 use emurs_kernel::prelude::tinyvec::{array_vec, ArrayVec};
 use emurs_kernel::video::{EmuRsColor, EmuRsColorFormatRgb565, EmuRsRgbColor};
 use emurs_kernel::video::{EmuRsColorFormatBgr565, EmuRsGenericColor};
+use emurs_kernel::EmuRsContext;
 use emurs_kernel::{
     prelude::nalgebra::{Point2, Vector2},
     video::EmuRsVideoDriver,
@@ -42,11 +44,11 @@ impl EmuRsDriver for GbaVideo {
     fn name(&self) -> &str {
         return "Game Boy Advance Video Driver";
     }
-    fn get_claimed(&self) -> EmuRsDevice {
+    fn get_claimed(&mut self) -> EmuRsDevice {
         todo!()
     }
 
-    fn setup_hardware(&self) {
+    fn init(&mut self, context: Rc<EmuRsContext>) {
         debug_assert_eq!(size_of::<DisplayControl>(), size_of::<u16>());
 
         let dispcnt = DisplayControl::new()
@@ -56,7 +58,7 @@ impl EmuRsDriver for GbaVideo {
         unsafe { DISPCNT.write_volatile(dispcnt) };
     }
 
-    fn get_preference(&self) -> EmuRsDriverPreference {
+    fn get_preference(&mut self) -> EmuRsDriverPreference {
         return EmuRsDriverPreference::Preferred;
     }
 }
