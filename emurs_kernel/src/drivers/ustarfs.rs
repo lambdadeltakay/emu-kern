@@ -1,12 +1,11 @@
-use crate::EmuRsContext;
+
 use crate::{
-    disk::EmuRsDiskDriver,
     driver::EmuRsDriver,
-    vfs::{EmuRsFilesystemManager, EmuRsFsDriver, EmuRsPath},
+    vfs::{EmuRsFsDriver},
 };
-use alloc::rc::Rc;
-use core::cell::RefCell;
-use modular_bitfield::prelude::*;
+
+
+
 
 // https://wiki.osdev.org/USTAR
 // https://www.ibm.com/docs/en/aix/7.1?topic=files-tarh-file
@@ -17,7 +16,7 @@ pub struct EmuRsUstarFs;
 impl EmuRsUstarFs {}
 
 impl EmuRsDriver for EmuRsUstarFs {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         todo!()
     }
 

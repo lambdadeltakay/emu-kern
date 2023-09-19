@@ -67,7 +67,7 @@ pub extern "C" fn gba_loader() -> ! {
 pub struct GbaSram;
 
 impl EmuRsDriver for GbaSram {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         return "Game Boy Advance SRAM";
     }
 

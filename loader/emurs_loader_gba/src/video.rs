@@ -41,9 +41,10 @@ const DISPCNT: *mut DisplayControl = 0x4000000 as *mut DisplayControl;
 pub struct GbaVideo;
 
 impl EmuRsDriver for GbaVideo {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         return "Game Boy Advance Video Driver";
     }
+
     fn get_claimed(&mut self) -> EmuRsDevice {
         todo!()
     }

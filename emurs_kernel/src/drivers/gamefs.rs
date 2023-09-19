@@ -1,22 +1,22 @@
 use crate::driver::EmuRsDriverPreference;
 use crate::error::EmuRsErrorReason;
 use crate::vfs::EmuRsFileMetadata;
-use crate::vfs::{EmuRsFileKind, EmuRsFilesystemManager};
+use crate::vfs::{EmuRsFileKind};
 use crate::EmuRsContext;
 use crate::{device::EmuRsDevice, error::EmuRsError};
 use crate::{
     driver::EmuRsDriver,
     vfs::{EmuRsFsDriver, EmuRsPath},
 };
-use alloc::boxed::Box;
-use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::format;
+
+use alloc::collections::{BTreeMap};
+
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use blake2::Blake2s256;
 use blake2::Digest;
-use core::cell::RefCell;
+
 use core::fmt::Write;
 use core::str::FromStr;
 use tinyvec::TinyVec;
@@ -85,7 +85,7 @@ impl EmuRsGameFs {
 }
 
 impl EmuRsDriver for EmuRsGameFs {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         return "Game Filesystem";
     }
 
@@ -105,16 +105,16 @@ impl EmuRsDriver for EmuRsGameFs {
 impl EmuRsFsDriver for EmuRsGameFs {
     fn read(
         &mut self,
-        file: &EmuRsPath,
-        mut buffer: &mut [u8],
-        offset: usize,
+        _file: &EmuRsPath,
+        _buffer: &mut [u8],
+        _offset: usize,
     ) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
 
-    fn list_directory(&mut self, file: &EmuRsPath) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
+    fn list_directory(&mut self, _file: &EmuRsPath) -> Result<TinyVec<[EmuRsPath; 10]>, EmuRsError> {
         return Ok(self
             .get_hashtable()
             .into_keys()
@@ -128,7 +128,7 @@ impl EmuRsFsDriver for EmuRsGameFs {
             .collect());
     }
 
-    fn metadata(&mut self, file: &EmuRsPath) -> Result<EmuRsFileMetadata, EmuRsError> {
+    fn metadata(&mut self, _file: &EmuRsPath) -> Result<EmuRsFileMetadata, EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });

@@ -1,36 +1,16 @@
-use core::any::{Any, TypeId};
 use core::mem::size_of;
 
-use crate::driver::{EmuRsDriver, EmuRsDriverPreference};
+use crate::driver::EmuRsDriver;
 use alloc::vec::Vec;
 use modular_bitfield::prelude::*;
-use nalgebra::SimdComplexField;
-use nalgebra::{ComplexField, SVector};
+
+use nalgebra::ComplexField;
 use nalgebra::{Point2, Vector2};
 use paste::paste;
-use tinyvec::{ArrayVec, TinyVec};
-
-#[bitfield]
-struct PsfFontFlags {
-    pub is_512_character: B1,
-    pub has_unicode_table: B1,
-    pub modeseq: B1,
-    extra: B5,
-}
 
 pub const GNU_UNIFONT: EmuRsPsfFont = EmuRsPsfFont {
     data: include_bytes!("../../font/Unifont-APL8x16-15.1.01.psf"),
 };
-
-pub trait EmuRsFont {
-    fn get_dimensions(&self) -> Vector2<u8>;
-    fn get_char_glyph(&self, character: char) -> Option<&[u8]>;
-    fn unicode_support(&self) -> bool;
-}
-
-pub struct EmuRsPsfFont<'owner> {
-    pub data: &'owner [u8],
-}
 
 impl<'owner> EmuRsPsfFont<'owner> {
     fn version(&self) -> u8 {
@@ -414,13 +394,13 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     /// Draw a glyph on the screen
     fn draw_glyph(
         &mut self,
-        color: EmuRsGenericColor,
-        position: Point2<u16>,
+        _color: EmuRsGenericColor,
+        _position: Point2<u16>,
         character: char,
         font: &dyn EmuRsFont,
     ) {
-        let font_data = font.get_char_glyph(character).unwrap();
-        let dimensions = font.get_dimensions();
+        let _font_data = font.get_char_glyph(character).unwrap();
+        let _dimensions = font.get_dimensions();
     }
 
     /// Draw a line. This software implementation is rather slow at the moment
@@ -575,6 +555,24 @@ impl<COLOR: EmuRsColor> EmuRsTexture<COLOR> {
             dimensions: self.dimensions,
         };
     }
+}
+
+#[bitfield]
+struct PsfFontFlags {
+    pub is_512_character: B1,
+    pub has_unicode_table: B1,
+    pub modeseq: B1,
+    extra: B5,
+}
+
+pub trait EmuRsFont {
+    fn get_dimensions(&self) -> Vector2<u8>;
+    fn get_char_glyph(&self, character: char) -> Option<&[u8]>;
+    fn unicode_support(&self) -> bool;
+}
+
+pub struct EmuRsPsfFont<'owner> {
+    pub data: &'owner [u8],
 }
 
 /// Convert a color channel to some kind of other color channel

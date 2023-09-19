@@ -8,29 +8,28 @@
 extern crate alloc;
 
 use core::borrow::BorrowMut;
-use core::cell::Ref;
-use core::cell::RefCell;
-use core::marker::PhantomData;
 
-use crate::vfs::EmuRsFilesystemManager;
+use core::cell::RefCell;
+use core::str::FromStr;
+
+use crate::vfs::EmuRsFilesystemSubsystem;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
-use blake2::Blake2s256;
+
 use blake2::Digest;
 use disk::EmuRsDiskDriver;
 use driver::EmuRsDriver;
 use drivers::gamefs::EmuRsGameFs;
 use drivers::ustarfs::EmuRsUstarFs;
-use lock_api::Mutex;
-use mem::EmuRsMemoryTable;
-use nalgebra::{Point2, SVector};
+
+use nalgebra::Point2;
 use prelude::EmuRsMemoryTableEntry;
-use tinyvec::ArrayVec;
-use tinyvec::TinyVec;
-use vfs::EmuRsFsDriver;
+use subsystem::EmuRsSubsystem;
+
+use vfs::{EmuRsFsDriver, EmuRsPath};
 use video::EmuRsGenericColor;
-use video::EmuRsTexture;
-use video::{EmuRsColorFormatRgb888, EmuRsRgbColor, EmuRsVideoDriver};
+
+use video::{EmuRsRgbColor, EmuRsVideoDriver};
 
 pub mod device;
 pub mod disk;
@@ -40,6 +39,7 @@ pub mod error;
 pub mod mem;
 pub mod prelude;
 pub mod program;
+pub mod subsystem;
 pub mod vfs;
 pub mod video;
 
@@ -71,11 +71,13 @@ impl EmuRsContextBuilder {
 
     pub fn done(self) -> Rc<EmuRsContext> {
         let context = Rc::new(EmuRsContext {
-            fs: RefCell::new(EmuRsFilesystemManager::default()),
+            fs: RefCell::new(EmuRsFilesystemSubsystem::default()),
             video_drivers: self.video_drivers,
             disk_drivers: self.disk_drivers,
             fs_drivers: self.fs_drivers,
         });
+
+        context.fs.borrow_mut().init(context.clone());
 
         for driver in context.video_drivers.iter() {
             driver.as_ref().borrow_mut().init(context.clone());
@@ -88,19 +90,18 @@ impl EmuRsContextBuilder {
         for driver in context.fs_drivers.iter() {
             driver.as_ref().borrow_mut().init(context.clone());
         }
+
         return context;
     }
 }
 
 #[derive(Clone)]
 pub struct EmuRsContext {
-    pub fs: RefCell<EmuRsFilesystemManager>,
+    pub fs: RefCell<EmuRsFilesystemSubsystem>,
     pub video_drivers: Vec<Rc<RefCell<dyn EmuRsVideoDriver>>>,
     pub disk_drivers: Vec<Rc<RefCell<dyn EmuRsDiskDriver>>>,
     pub fs_drivers: Vec<Rc<RefCell<dyn EmuRsFsDriver>>>,
 }
-
-impl EmuRsContext {}
 
 /// The kernel entry to be used by the bootloader
 ///
@@ -133,6 +134,12 @@ pub fn emurs_main(
                 .draw_pixel(EmuRsGenericColor::new(0xff, 0x00, 0x00), Point2::new(x, y));
         }
     }
+
+    let files = context
+        .fs
+        .borrow()
+        .list_directory(&EmuRsPath::from_str("/").unwrap())
+        .unwrap();
 
     loop {}
 }

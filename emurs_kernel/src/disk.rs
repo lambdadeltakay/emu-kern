@@ -1,25 +1,25 @@
 use core::intrinsics::size_of;
 
-use lock_api::RwLock;
+
 
 use crate::device::EmuRsDevice;
 use crate::driver::EmuRsDriver;
 use crate::driver::EmuRsDriverPreference;
 use crate::error::EmuRsError;
 use crate::error::EmuRsErrorReason;
-use crate::EmuRsContext;
-use alloc::rc::Rc;
-use core::cell::RefCell;
+
+
+
 
 /// The disk implementation for filesystems to write and read
 /// IMPORTANT: Disks MUST return failure if they cannot fill the entire buffer. This is a hard requirement
 pub trait EmuRsDiskDriver: EmuRsDriver {
-    fn write(&mut self, buffer: &[u8], offset: usize) -> Result<(), EmuRsError> {
+    fn write(&mut self, _buffer: &[u8], _offset: usize) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
-    fn read(&mut self, buffer: &mut [u8], offset: usize) -> Result<(), EmuRsError> {
+    fn read(&mut self, _buffer: &mut [u8], _offset: usize) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
@@ -78,7 +78,7 @@ pub struct EmuRsInternalDisk<'owner> {
 }
 
 impl<'owner> EmuRsDriver for EmuRsInternalDisk<'owner> {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         return "Internal Disk";
     }
 

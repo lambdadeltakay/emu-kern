@@ -1,6 +1,5 @@
 use core::{
-    alloc::{Allocator, GlobalAlloc, Layout},
-    mem::size_of,
+    alloc::{GlobalAlloc, Layout},
     ops::RangeInclusive,
 };
 use lock_api::{Mutex, RawMutex};
@@ -101,7 +100,7 @@ pub struct EmuRsAllocator {
 impl EmuRsAllocator {
     pub const fn new() -> Self {
         // This is a extremely messed up hack to make up for rust consts being really messed up
-        let mut my_table = Self {
+        let my_table = Self {
             memory_table: Mutex::new(EmuRsMemoryTable {
                 entries: ArrayVec::from_array_empty(
                     [EmuRsMemoryTableEntry {
@@ -228,7 +227,7 @@ unsafe impl GlobalAlloc for EmuRsAllocator {
         return free_mem.unwrap().first as *mut u8;
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
         let num = self
             .slabs
             .lock()

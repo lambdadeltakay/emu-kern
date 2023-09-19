@@ -1,8 +1,8 @@
 use alloc::vec::Vec;
-use core::ops::RangeInclusive;
-use tinyvec::{ArrayVec, TinyVec};
 
-use crate::{disk::EmuRsDiskDriver, mem::EmuRsMemoryRange, video::EmuRsVideoDriver};
+use tinyvec::{TinyVec};
+
+use crate::{mem::EmuRsMemoryRange};
 
 pub struct EmuRsDeviceTable {
     devices: Vec<EmuRsDevice>,
