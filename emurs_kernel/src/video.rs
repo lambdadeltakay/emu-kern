@@ -569,7 +569,8 @@ fn convert_channel(value: u8, from: usize, to: usize) -> u8 {
         return value;
     }
 
-    return (value as usize * (from / to)).min(to) as u8;
+    let converted_value = (value as usize * to / from) as u8;
+    return converted_value.min(to as u8);
 }
 
 #[inline]

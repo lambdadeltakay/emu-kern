@@ -121,19 +121,14 @@ pub fn emurs_main(
 
     let context = builder.done();
 
-    for x in 0..10 {
-        for y in 0..10 {
-            context.video_drivers[0].as_ref().borrow_mut().draw_texture(
-                EmuRsTexture::new(DMatrix::from_element(
-                    100,
-                    100,
-                    EmuRsColorFormatRgb888::new((x as u8), 0xff, 0xff),
-                ))
-                .convert_rgb(),
-                Point2::new(x, y),
-            );
-        }
-    }
+    let texture = EmuRsTexture::new(DMatrix::from_fn(100, 100, |x, y| {
+        return EmuRsGenericColor::new(x as u8, y as u8, 0);
+    }));
+
+    context.video_drivers[0]
+        .as_ref()
+        .borrow_mut()
+        .draw_texture(texture.convert_rgb(), Point2::new(0, 0));
 
     let files = context
         .fs
