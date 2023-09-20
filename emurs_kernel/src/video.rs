@@ -1,10 +1,11 @@
+use core::fmt::Debug;
 use core::mem::size_of;
 
 use crate::driver::EmuRsDriver;
 use alloc::vec::Vec;
 use modular_bitfield::prelude::*;
 
-use nalgebra::ComplexField;
+use nalgebra::{ComplexField, DMatrix, Scalar};
 use nalgebra::{Point2, Vector2};
 use paste::paste;
 
@@ -12,43 +13,6 @@ pub const GNU_UNIFONT: EmuRsPsfFont = EmuRsPsfFont {
     data: include_bytes!("../../font/Unifont-APL8x16-15.1.01.psf"),
 };
 
-impl<'owner> EmuRsPsfFont<'owner> {
-    fn version(&self) -> u8 {
-        if u16::from_be_bytes(self.data[0..1].try_into().unwrap()) == 0x0436 {
-            return 1;
-        }
-
-        if u32::from_be_bytes(self.data[0..3].try_into().unwrap()) == 0x864ab572 {
-            return 2;
-        }
-
-        unreachable!();
-    }
-}
-
-impl<'owner> EmuRsFont for EmuRsPsfFont<'owner> {
-    fn get_dimensions(&self) -> Vector2<u8> {
-        if self.version() == 1 {
-            return Vector2::new(8, self.data[3]);
-        }
-
-        todo!()
-    }
-
-    /// To be honest this is what i think will work
-    fn get_char_glyph(&self, character: char) -> Option<&[u8]> {
-        let dim = self.get_dimensions();
-
-        // FIXME: Test this extensively
-        let glyph = character as usize + (dim.x as usize * dim.y as usize) + 4;
-
-        return Some(&self.data[glyph..(glyph + (dim.x as usize * dim.y as usize))]);
-    }
-
-    fn unicode_support(&self) -> bool {
-        todo!()
-    }
-}
 // Note that this is all based upon embedded-graphic's color implementation, but with more macro mess. Credit to them
 // The macros are such a mess that when macros are expanded, this file is around 2000 lines with common rgb and bgr formats implemented!
 // This isn't a problem unless you are compiling on a bad cpu
@@ -245,11 +209,19 @@ macro_rules! grey_color {
                 }
 
                 fn convert_rgb<COLOR: EmuRsRgbColor>(&self) -> COLOR {
-                    todo!()
+                    let red = convert_channel(self.luma(), Self::MAX, COLOR::RMAX);
+                    let green = convert_channel(self.luma(), Self::MAX, COLOR::GMAX);
+                    let blue = convert_channel(self.luma(), Self::MAX, COLOR::BMAX);
+
+                    return COLOR::new(red, green, blue);
                 }
 
                 fn convert_bgr<COLOR: EmuRsBgrColor>(&self) -> COLOR {
-                    todo!()
+                    let blue = convert_channel(self.luma(), Self::MAX, COLOR::BMAX);
+                    let green = convert_channel(self.luma(), Self::MAX, COLOR::GMAX);
+                    let red = convert_channel(self.luma(), Self::MAX, COLOR::RMAX);
+
+                    return COLOR::new(blue, green, red);
                 }
 
                 fn convert_grey<COLOR: EmuRsGreyColor>(&self) -> COLOR
@@ -381,11 +353,11 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     fn draw_pixel(&mut self, color: EmuRsGenericColor, position: Point2<u16>);
 
     fn draw_texture(&mut self, texture: EmuRsTexture<EmuRsGenericColor>, position: Point2<u16>) {
-        for x in 0..texture.dimensions.x {
-            for y in 0..texture.dimensions.y {
+        for x in 0..texture.data.ncols() {
+            for y in 0..texture.data.nrows() {
                 self.draw_pixel(
-                    texture.pixel(Point2::new(x, y)),
-                    Point2::new(x + position.x, y + position.y),
+                    *texture.data.index((x, y)),
+                    Point2::new(x as u16 + position.x, y as u16 + position.y),
                 );
             }
         }
@@ -500,60 +472,37 @@ pub trait EmuRsVideoDriver: EmuRsDriver {
     }
 }
 
-pub struct EmuRsTexture<COLOR: EmuRsColor> {
-    pub data: Vec<COLOR>,
-    pub dimensions: Point2<u16>,
+pub struct EmuRsTexture<COLOR: EmuRsColor + Scalar> {
+    pub data: DMatrix<COLOR>,
 }
 
-impl<COLOR: EmuRsColor> EmuRsTexture<COLOR> {
-    pub fn new(data: &[COLOR], dimensions: Point2<u16>) -> Self {
-        return Self {
-            data: data.to_vec(),
-            dimensions,
-        };
+impl<COLOR: EmuRsColor + Scalar> EmuRsTexture<COLOR> {
+    pub fn new(data: DMatrix<COLOR>) -> Self {
+        return Self { data };
     }
 
-    pub fn pixel(&self, position: Point2<u16>) -> COLOR {
-        return self.data[(position.x + (position.y * self.dimensions.x)) as usize];
+    pub fn convert_rgb<OTHER_COLOR: EmuRsRgbColor + Scalar>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        let data = self.data.map(|color| {
+            return color.convert_rgb::<OTHER_COLOR>();
+        });
+
+        return EmuRsTexture { data };
     }
 
-    pub fn convert_rgb<OTHER_COLOR: EmuRsRgbColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
-        return EmuRsTexture {
-            data: self
-                .data
-                .iter()
-                .map(|color| {
-                    return color.convert_rgb();
-                })
-                .collect(),
-            dimensions: self.dimensions,
-        };
+    pub fn convert_bgr<OTHER_COLOR: EmuRsBgrColor + Scalar>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        let data = self.data.map(|color| {
+            return color.convert_bgr::<OTHER_COLOR>();
+        });
+
+        return EmuRsTexture { data };
     }
 
-    pub fn convert_bgr<OTHER_COLOR: EmuRsBgrColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
-        return EmuRsTexture {
-            data: self
-                .data
-                .iter()
-                .map(|color| {
-                    return color.convert_bgr();
-                })
-                .collect(),
-            dimensions: self.dimensions,
-        };
-    }
+    pub fn convert_grey<OTHER_COLOR: EmuRsGreyColor + Scalar>(&self) -> EmuRsTexture<OTHER_COLOR> {
+        let data = self.data.map(|color| {
+            return color.convert_grey::<OTHER_COLOR>();
+        });
 
-    pub fn convert_grey<OTHER_COLOR: EmuRsGreyColor>(&self) -> EmuRsTexture<OTHER_COLOR> {
-        return EmuRsTexture {
-            data: self
-                .data
-                .iter()
-                .map(|color| {
-                    return color.convert_grey();
-                })
-                .collect(),
-            dimensions: self.dimensions,
-        };
+        return EmuRsTexture { data };
     }
 }
 
@@ -573,6 +522,44 @@ pub trait EmuRsFont {
 
 pub struct EmuRsPsfFont<'owner> {
     pub data: &'owner [u8],
+}
+
+impl<'owner> EmuRsPsfFont<'owner> {
+    fn version(&self) -> u8 {
+        if u16::from_be_bytes(self.data[0..1].try_into().unwrap()) == 0x0436 {
+            return 1;
+        }
+
+        if u32::from_be_bytes(self.data[0..3].try_into().unwrap()) == 0x864ab572 {
+            return 2;
+        }
+
+        unreachable!();
+    }
+}
+
+impl<'owner> EmuRsFont for EmuRsPsfFont<'owner> {
+    fn get_dimensions(&self) -> Vector2<u8> {
+        if self.version() == 1 {
+            return Vector2::new(8, self.data[3]);
+        }
+
+        todo!()
+    }
+
+    /// To be honest this is what i think will work
+    fn get_char_glyph(&self, character: char) -> Option<&[u8]> {
+        let dim = self.get_dimensions();
+
+        // FIXME: Test this extensively
+        let glyph = character as usize + (dim.x as usize * dim.y as usize) + 4;
+
+        return Some(&self.data[glyph..(glyph + (dim.x as usize * dim.y as usize))]);
+    }
+
+    fn unicode_support(&self) -> bool {
+        todo!()
+    }
 }
 
 /// Convert a color channel to some kind of other color channel

@@ -16,3 +16,7 @@ Run `debug.sh x86_64-unknown-linux-gnu` for x86_64 linux support (constantly bro
 
 
 Replace `debug.sh` with `release.sh` for release builds
+
+## External Code used
+
+[Unifont](https://unifoundry.com/unifont/index.html)

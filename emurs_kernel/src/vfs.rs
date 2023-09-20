@@ -25,8 +25,9 @@ use tinyvec::{tiny_vec, TinyVec};
 #[derive(Clone, Default)]
 pub struct EmuRsFilesystemSubsystem {
     os_context: Option<Rc<EmuRsContext>>,
-    fsdriver_to_diskdriver: BTreeMap<&'static str, &'static str>,
-    mountpounts: BTreeMap<EmuRsPath, &'static str>,
+    fsdriver_to_diskdriver: BTreeMap<usize, usize>,
+    mountpounts: BTreeMap<EmuRsPath, usize>,
+    cwd: EmuRsPath,
 }
 
 impl EmuRsFilesystemSubsystem {
@@ -34,14 +35,26 @@ impl EmuRsFilesystemSubsystem {
     /// Wildly incomplete
     pub fn normalize_path(
         &self,
-        context_path: EmuRsPath,
-        _relative_path: EmuRsPath,
+        context_path: Option<&EmuRsPath>,
+        relative_path: &EmuRsPath,
     ) -> Result<EmuRsPath, EmuRsError> {
-        let return_path = EmuRsPath::default();
+        let mut return_path = EmuRsPath::default();
 
-        if !context_path.is_absolute() {
-            return Err(EmuRsError {
-                reason: EmuRsErrorReason::InvalidPath,
+        if context_path.is_some() {
+            if !context_path.unwrap().is_absolute() {
+                return Err(EmuRsError {
+                    reason: EmuRsErrorReason::InvalidPath,
+                });
+            }
+        } else {
+            if relative_path.segments[0] != "ROOT" {
+                return Err(EmuRsError {
+                    reason: EmuRsErrorReason::InvalidPath,
+                });
+            }
+
+            return_path.segments.retain(|segment| {
+                return segment != ".";
             });
         }
 
@@ -66,10 +79,12 @@ impl EmuRsFilesystemSubsystem {
 
     pub fn read(
         &self,
-        _path: &EmuRsPath,
+        path: &EmuRsPath,
         _buffer: &mut [u8],
         _offset: usize,
     ) -> Result<(), EmuRsError> {
+        let norm_path = self.normalize_path(Some(&self.cwd), path);
+
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
@@ -114,6 +129,7 @@ pub trait EmuRsFsDriver: EmuRsDriver {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
+
     fn write(
         &mut self,
         _file: &EmuRsPath,
@@ -124,11 +140,13 @@ pub trait EmuRsFsDriver: EmuRsDriver {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
+
     fn delete(&mut self, _file: &EmuRsPath) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
         });
     }
+
     fn create(&mut self, _file: &EmuRsPath) -> Result<(), EmuRsError> {
         return Err(EmuRsError {
             reason: EmuRsErrorReason::OperationNotSupported,
@@ -205,9 +223,11 @@ impl FromStr for EmuRsPath {
 
     // TODO: Complete this
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if &s[0..1] == "fs" {
-            return Ok(Self {
-                segments: tiny_vec![s.to_string()],
+        let mut segments = s.split("/");
+
+        if segments.next() != Some("ROOT") {
+            return Err(EmuRsError {
+                reason: EmuRsErrorReason::InvalidPath,
             });
         }
 
@@ -220,7 +240,7 @@ impl FromStr for EmuRsPath {
 impl Default for EmuRsPath {
     fn default() -> Self {
         return Self {
-            segments: tiny_vec!["fs".to_string()],
+            segments: tiny_vec!["ROOT".to_string()],
         };
     }
 }

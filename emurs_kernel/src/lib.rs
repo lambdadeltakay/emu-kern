@@ -3,38 +3,33 @@
 #![feature(core_intrinsics)]
 #![feature(const_mut_refs)]
 #![feature(allocator_api)]
-#![feature(thin_box)]
 
 extern crate alloc;
 
-use core::borrow::BorrowMut;
-
-use core::cell::RefCell;
-use core::str::FromStr;
-
+use crate::mem::EmuRsMemoryTableEntry;
 use crate::vfs::EmuRsFilesystemSubsystem;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
-
 use blake2::Digest;
+use core::borrow::BorrowMut;
+use core::cell::RefCell;
+use core::str::FromStr;
 use disk::EmuRsDiskDriver;
 use driver::EmuRsDriver;
 use drivers::gamefs::EmuRsGameFs;
 use drivers::ustarfs::EmuRsUstarFs;
-
-use nalgebra::Point2;
-use prelude::EmuRsMemoryTableEntry;
+use nalgebra::{DMatrix, Point2};
 use subsystem::EmuRsSubsystem;
-
 use vfs::{EmuRsFsDriver, EmuRsPath};
-use video::EmuRsGenericColor;
-
+use video::{
+    EmuRsColorFormatGrey1, EmuRsColorFormatRgb888, EmuRsGenericColor, EmuRsGreyColor, EmuRsTexture,
+};
 use video::{EmuRsRgbColor, EmuRsVideoDriver};
 
 pub mod device;
 pub mod disk;
 pub mod driver;
-pub mod drivers;
+mod drivers;
 pub mod error;
 pub mod mem;
 pub mod prelude;
@@ -126,12 +121,17 @@ pub fn emurs_main(
 
     let context = builder.done();
 
-    for x in 0..100 {
-        for y in 0..100 {
-            context.video_drivers[0]
-                .as_ref()
-                .borrow_mut()
-                .draw_pixel(EmuRsGenericColor::new(0xff, 0x00, 0x00), Point2::new(x, y));
+    for x in 0..10 {
+        for y in 0..10 {
+            context.video_drivers[0].as_ref().borrow_mut().draw_texture(
+                EmuRsTexture::new(DMatrix::from_element(
+                    100,
+                    100,
+                    EmuRsColorFormatRgb888::new((x as u8), 0xff, 0xff),
+                ))
+                .convert_rgb(),
+                Point2::new(x, y),
+            );
         }
     }
 

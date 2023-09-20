@@ -14,8 +14,12 @@ use alloc::rc::Rc;
 use emurs_kernel::device::EmuRsDevice;
 use emurs_kernel::disk::{EmuRsDiskDriver, EmuRsMemoryDisk};
 use emurs_kernel::driver::{EmuRsDriver, EmuRsDriverPreference};
+use emurs_kernel::mem::EmuRsMemoryKind;
+use emurs_kernel::mem::EmuRsMemoryPermission;
+use emurs_kernel::mem::EmuRsMemoryRange;
+use emurs_kernel::mem::EmuRsMemoryTableEntry;
+use emurs_kernel::prelude::*;
 use emurs_kernel::EmuRsContext;
-use emurs_kernel::{mem::EmuRsMemoryRange, prelude::*};
 use video::GbaVideo;
 
 #[naked]

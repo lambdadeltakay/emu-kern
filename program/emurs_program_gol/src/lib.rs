@@ -2,28 +2,32 @@
 
 extern crate alloc;
 
+use alloc::rc::Rc;
+use emurs_kernel::prelude::nalgebra::DMatrix;
 use emurs_kernel::program::EmuRsProgram;
+use emurs_kernel::video::{EmuRsColorFormatGrey1, EmuRsGreyColor, EmuRsTexture};
+use emurs_kernel::EmuRsContext;
 
-pub struct Program;
+pub struct Program {
+    gol_board: DMatrix<bool>,
+}
 
 impl EmuRsProgram for Program {
-    fn new(os_context: alloc::rc::Rc<emurs_kernel::EmuRsContext>) -> Self
+    fn new() -> Self
     where
         Self: Sized,
     {
         todo!()
     }
 
-    fn init(&mut self) {
+    fn step(&mut self, os_context: &EmuRsContext) {
         todo!()
     }
 
-    fn step(&mut self) {
-        todo!()
-    }
-
-    fn vsync(&mut self) {
-        todo!()
+    fn vsync(&mut self, os_context: &EmuRsContext) {
+        let texture = EmuRsTexture::new(self.gol_board.map(|element| {
+            return EmuRsColorFormatGrey1::new(element as u8);
+        }));
     }
 
     fn exit(&mut self) {
